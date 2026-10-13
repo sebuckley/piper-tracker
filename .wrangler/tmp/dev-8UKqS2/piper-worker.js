@@ -2,12 +2,12 @@ var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
 // worker/piper-worker.js
-function cors(response) {
-  const headers = new Headers(response.headers);
-  headers.set("Access-Control-Allow-Origin", "*");
-  headers.set("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE, OPTIONS");
-  headers.set("Access-Control-Allow-Headers", "Content-Type");
-  return new Response(response.body, { ...response, headers });
+function cors() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization"
+  };
 }
 __name(cors, "cors");
 var piper_worker_default = {
@@ -16,56 +16,59 @@ var piper_worker_default = {
     const path = url.pathname;
     const method = request.method;
     if (method === "OPTIONS") {
-      return cors(new Response(null, { status: 204 }));
+      return new Response(null, { status: 204, headers: cors() });
     }
     if (path === "/" && method === "GET") {
-      return cors(new Response("Piper Tracker KV backend is running!", {
-        headers: { "Content-Type": "text/plain" }
-      }));
+      return new Response("Piper Tracker KV backend is running!", {
+        status: 200,
+        headers: { ...cors(), "Content-Type": "text/plain" }
+      });
     }
     if (method === "GET" && path.startsWith("/api/user/")) {
       const uid = path.split("/")[3];
       const json = await env.TRACKER_DATA.get(`user:${uid}`);
-      return cors(new Response(json || "{}", {
-        headers: { "Content-Type": "application/json" }
-      }));
+      return new Response(json || "{}", {
+        status: 200,
+        headers: { ...cors(), "Content-Type": "application/json" }
+      });
     }
     if (method === "PUT" && path.startsWith("/api/user/")) {
       const uid = path.split("/")[3];
       const body = await request.text();
       await env.TRACKER_DATA.put(`user:${uid}`, body);
-      return cors(new Response("OK", { status: 200 }));
+      return new Response("OK", { status: 200, headers: cors() });
     }
     if (method === "DELETE" && path.startsWith("/api/user/")) {
       const uid = path.split("/")[3];
       await env.TRACKER_DATA.delete(`user:${uid}`);
-      return cors(new Response(JSON.stringify({ ok: true, deleted: uid }), {
+      return new Response(JSON.stringify({ ok: true, deleted: uid }), {
         status: 200,
-        headers: { "Content-Type": "application/json" }
-      }));
+        headers: { ...cors(), "Content-Type": "application/json" }
+      });
     }
     if (method === "GET" && path.startsWith("/api/state/")) {
       const childId = path.split("/")[3];
       const json = await env.TRACKER_DATA.get(`state:${childId}`);
-      return cors(new Response(json || "{}", {
-        headers: { "Content-Type": "application/json" }
-      }));
+      return new Response(json || "{}", {
+        status: 200,
+        headers: { ...cors(), "Content-Type": "application/json" }
+      });
     }
     if (method === "PUT" && path.startsWith("/api/state/")) {
       const childId = path.split("/")[3];
       const body = await request.text();
       await env.TRACKER_DATA.put(`state:${childId}`, body);
-      return cors(new Response("OK", { status: 200 }));
+      return new Response("OK", { status: 200, headers: cors() });
     }
     if (method === "DELETE" && path.startsWith("/api/state/")) {
       const childId = path.split("/")[3];
       await env.TRACKER_DATA.delete(`state:${childId}`);
-      return cors(new Response(JSON.stringify({ ok: true, deleted: childId }), {
+      return new Response(JSON.stringify({ ok: true, deleted: childId }), {
         status: 200,
-        headers: { "Content-Type": "application/json" }
-      }));
+        headers: { ...cors(), "Content-Type": "application/json" }
+      });
     }
-    return cors(new Response("Not found", { status: 404 }));
+    return new Response("Not found", { status: 404, headers: cors() });
   }
 };
 
@@ -116,7 +119,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-Inju6N/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-DDFuMf/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -148,7 +151,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-Inju6N/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-DDFuMf/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

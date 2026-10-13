@@ -1,9 +1,9 @@
-function cors(response) {
-  const headers = new Headers(response.headers);
-  headers.set("Access-Control-Allow-Origin", "*");
-  headers.set("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE, OPTIONS");
-  headers.set("Access-Control-Allow-Headers", "Content-Type");
-  return new Response(response.body, { ...response, headers });
+function cors() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization"
+  };
 }
 
 export default {
@@ -14,14 +14,15 @@ export default {
 
     // CORS preflight
     if (method === "OPTIONS") {
-      return cors(new Response(null, { status: 204 }));
+      return new Response(null, { status: 204, headers: cors() });
     }
 
     // Health check
     if (path === "/" && method === "GET") {
-      return cors(new Response("Piper Tracker KV backend is running!", {
-        headers: { "Content-Type": "text/plain" }
-      }));
+      return new Response("Piper Tracker KV backend is running!", {
+        status: 200,
+        headers: { ...cors(), "Content-Type": "text/plain" }
+      });
     }
 
     // ---------------------------------------------------------
@@ -32,9 +33,10 @@ export default {
     if (method === "GET" && path.startsWith("/api/user/")) {
       const uid = path.split("/")[3];
       const json = await env.TRACKER_DATA.get(`user:${uid}`);
-      return cors(new Response(json || "{}", {
-        headers: { "Content-Type": "application/json" }
-      }));
+      return new Response(json || "{}", {
+        status: 200,
+        headers: { ...cors(), "Content-Type": "application/json" }
+      });
     }
 
     // PUT /api/user/:uid
@@ -42,17 +44,17 @@ export default {
       const uid = path.split("/")[3];
       const body = await request.text();
       await env.TRACKER_DATA.put(`user:${uid}`, body);
-      return cors(new Response("OK", { status: 200 }));
+      return new Response("OK", { status: 200, headers: cors() });
     }
 
     // DELETE /api/user/:uid
     if (method === "DELETE" && path.startsWith("/api/user/")) {
       const uid = path.split("/")[3];
       await env.TRACKER_DATA.delete(`user:${uid}`);
-      return cors(new Response(JSON.stringify({ ok: true, deleted: uid }), {
+      return new Response(JSON.stringify({ ok: true, deleted: uid }), {
         status: 200,
-        headers: { "Content-Type": "application/json" }
-      }));
+        headers: { ...cors(), "Content-Type": "application/json" }
+      });
     }
 
     // ---------------------------------------------------------
@@ -63,9 +65,10 @@ export default {
     if (method === "GET" && path.startsWith("/api/state/")) {
       const childId = path.split("/")[3];
       const json = await env.TRACKER_DATA.get(`state:${childId}`);
-      return cors(new Response(json || "{}", {
-        headers: { "Content-Type": "application/json" }
-      }));
+      return new Response(json || "{}", {
+        status: 200,
+        headers: { ...cors(), "Content-Type": "application/json" }
+      });
     }
 
     // PUT /api/state/:childId
@@ -73,21 +76,21 @@ export default {
       const childId = path.split("/")[3];
       const body = await request.text();
       await env.TRACKER_DATA.put(`state:${childId}`, body);
-      return cors(new Response("OK", { status: 200 }));
+      return new Response("OK", { status: 200, headers: cors() });
     }
 
     // DELETE /api/state/:childId
     if (method === "DELETE" && path.startsWith("/api/state/")) {
       const childId = path.split("/")[3];
       await env.TRACKER_DATA.delete(`state:${childId}`);
-      return cors(new Response(JSON.stringify({ ok: true, deleted: childId }), {
+      return new Response(JSON.stringify({ ok: true, deleted: childId }), {
         status: 200,
-        headers: { "Content-Type": "application/json" }
-      }));
+        headers: { ...cors(), "Content-Type": "application/json" }
+      });
     }
 
     // ---------------------------------------------------------
 
-    return cors(new Response("Not found", { status: 404 }));
+    return new Response("Not found", { status: 404, headers: cors() });
   }
 };

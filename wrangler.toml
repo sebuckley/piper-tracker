@@ -1,8 +1,7 @@
 name = "piper-tracker-backend"
 main = "worker/piper-worker.js"
 compatibility_date = "2024-10-01"
-local = true
-reload = false
+workers_dev = true
 
 # Production KV
 [[kv_namespaces]]
