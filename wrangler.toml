@@ -1,0 +1,16 @@
+name = "piper-tracker-backend"
+main = "worker/piper-worker.js"
+compatibility_date = "2024-10-01"
+local = true
+reload = false
+
+# Production KV
+[[kv_namespaces]]
+binding = "TRACKER_DATA"
+id = "prod_namespace_id"
+
+# Development KV (env.dev)
+[env.dev]
+[[env.dev.kv_namespaces]]
+binding = "TRACKER_DATA"
+id = "dev_namespace_id"
