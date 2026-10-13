@@ -7,7 +7,7 @@ reload = false
 # Production KV
 [[kv_namespaces]]
 binding = "TRACKER_DATA"
-id = "prod_namespace_id"
+id = "ee90e158ae5d4b73b655a9a58c851258"
 
 # Development KV (env.dev)
 [env.dev]
