@@ -15,6 +15,7 @@ export default function BankAccountCard({ accountId }) {
   const addWithdrawal = useAppStore(state => state.addWithdrawal);
   const importTransactions = useAppStore(state => state.importTransactions);
   const accounts = useAppStore(state => state.bankAccounts ?? {});
+  const isViewer = useAppStore(state => state.isViewer());
 
   const account = getAccount(accountId);
 
@@ -139,7 +140,7 @@ export default function BankAccountCard({ accountId }) {
 
       {/* Action Buttons */}
       <div className="d-flex gap-2 mb-2">
-        <button
+        {!isViewer && <><button
           className="btn btn-sm"
           style={{
             backgroundColor: "#b300ff",
@@ -198,7 +199,7 @@ export default function BankAccountCard({ accountId }) {
           >
             Transfer
           </button>
-        )}
+        )}</>}
             {/* Full History Button */}
         {transactions.length > 0 && (
          
@@ -220,12 +221,12 @@ export default function BankAccountCard({ accountId }) {
         <div className="small mb-2" style={{ color: "#1f2a44" }}>{importMsg}</div>
       )}
 
-      {showTransfer && (
+      {!isViewer && showTransfer && (
         <TransferForm fromId={accountId} close={() => setShowTransfer(false)} />
       )}
 
       {/* Hidden Credit Form */}
-      {showCredit && (
+      {!isViewer && showCredit && (
         <div className="mt-3">
           <div className="small mb-1">Add Credit</div>
 
@@ -275,7 +276,7 @@ export default function BankAccountCard({ accountId }) {
       )}
 
       {/* Hidden Withdrawal Form */}
-      {showWithdraw && (
+      {!isViewer && showWithdraw && (
         <div className="mt-3">
           <div className="small mb-1">Withdraw Money</div>
 

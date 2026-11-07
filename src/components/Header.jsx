@@ -7,6 +7,7 @@ import ChildAvatar from "./ChildAvatar";
 export default function Header() {
   const logout = useAppStore(s => s.logout);
   const userProfile = useAppStore(s => s.userProfile);
+  const isViewer = useAppStore(s => s.isViewer());
 
   const activeChild = useAppStore(s => s.activeChild);
   const children = useAppStore(s => s.children);
@@ -130,8 +131,8 @@ export default function Header() {
               ["/achievement", "Achievements"],
               ["/sports", "Sports & Activities"],
               ["/rewards", "Rewards"],
-              ["/settings", "Settings"],
-              ["/profile", "Profile"]
+              ["/bank", "Bank Account"],
+              ...(!isViewer ? [["/settings", "Settings"], ["/profile", "Profile"]] : [])
             ].map(([path, label]) => {
               const isActive = location.pathname === path;
 

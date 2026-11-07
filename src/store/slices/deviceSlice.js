@@ -8,7 +8,8 @@ import {
   deleteDoc,
   collection,
   getDocs,
-  runTransaction
+  runTransaction,
+  onSnapshot
 } from "firebase/firestore";
 
 import { db } from "../../hooks/firebaseConfig";
@@ -81,8 +82,27 @@ export const createDeviceSlice = (set, get) => ({
     const deviceSnap = await getDoc(deviceRef);
     const deviceData = deviceSnap.exists() ? deviceSnap.data() : {};
 
-    // Return roleOverride so userSlice can compute effectiveRole
+    set({ deviceRoleOverride: deviceData.roleOverride || null, isChildDevice: deviceData.isChildDevice === true });
+    set({ effectiveRole: get().computeEffectiveRole() });
     return deviceData.roleOverride || null;
+  },
+
+  watchCurrentDevice: () => {
+    const { deviceId, familyGroupId } = get();
+    if (!deviceId || !familyGroupId) return () => {};
+    return onSnapshot(doc(db, "familyGroups", familyGroupId, "devices", deviceId), snap => {
+      if (!snap.exists()) {
+        set({ isChildDevice: true, deviceRoleOverride: "viewer" });
+      } else {
+        const data = snap.data();
+        set({ isChildDevice: data.isChildDevice === true, deviceRoleOverride: data.roleOverride || null });
+      }
+      set({ effectiveRole: get().computeEffectiveRole() });
+    }, error => {
+      console.error("Could not monitor device permissions:", error.code);
+      set({ isChildDevice: true, deviceRoleOverride: "viewer" });
+      set({ effectiveRole: get().computeEffectiveRole() });
+    });
   },
 
   // ---------------------------------------------------------
@@ -130,11 +150,10 @@ export const createDeviceSlice = (set, get) => ({
       )
     });
 
-    // If this is the current device, return override so userSlice can recompute effectiveRole
-    const currentDeviceId = get().deviceId;
-
-    if (deviceId === currentDeviceId) {
-      return data.roleOverride ?? null;
+    if (deviceId === get().deviceId) {
+      const current = get().devices.find(d => d.id === deviceId);
+      set({ deviceRoleOverride: current?.roleOverride || null, isChildDevice: current?.isChildDevice === true });
+      set({ effectiveRole: get().computeEffectiveRole() });
     }
   },
 

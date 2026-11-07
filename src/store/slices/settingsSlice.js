@@ -3,7 +3,7 @@ export const createSettingsSlice = (set, get) => ({
   starThreshold: 100,
   recentActivity: [],
 
-  isViewer: () => get().effectiveRole === "viewer",
+  isViewer: () => !["owner", "editor"].includes(get().effectiveRole),
   isEditor: () => get().effectiveRole === "editor",
   isOwner: () => get().effectiveRole === "owner",
 

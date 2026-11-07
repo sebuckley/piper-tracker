@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SkillsBrowser from "./SkillsBrowser";
 import { useAppStore } from "../../../store/useAppStore";
 
-export default function SkillsSection({ sport, category, deleteSkill }) {
+export default function SkillsSection({ sport, category, deleteSkill, readOnly = false }) {
   const navigate = useNavigate();
 
   const defaultSports = useAppStore(s => s.defaultSports);
@@ -43,8 +43,10 @@ export default function SkillsSection({ sport, category, deleteSkill }) {
       levels={sportTemplate.levels}
       sportId={sport.templateId}
       categoryId={category.templateId}
-      onRemove={skill => deleteSkill(sport.id, category.id, skill.id)}
+      onRemove={readOnly ? undefined : skill => deleteSkill(sport.id, category.id, skill.id)}
+      readOnly={readOnly}
       manageButton={
+        !readOnly &&
         <button
           className="btn btn-light"
           style={{

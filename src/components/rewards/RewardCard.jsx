@@ -27,8 +27,9 @@ export default function RewardCard({
     confirmedBy
   } = item;
 
-  const isOwner = useAppStore(s => s.userRole) !== "viewer";
+  const isOwner = useAppStore(s => !s.isViewer());
   const starBalance = useAppStore(s => s.starBalance);
+  const requested = useAppStore(s => s.rewardRequests.some(request => request.id === item.id));
   const resolveName = useAddedByName();
 
   const updateReward = useAppStore(s => s.updateReward);
@@ -388,6 +389,7 @@ export default function RewardCard({
             ) : (
               <button
                 className="btn"
+                disabled={requested}
                 style={{
                   background: "#b300ff",
                   color: "white",
@@ -397,7 +399,7 @@ export default function RewardCard({
                 }}
                 onClick={onRequest}
               >
-                Request Redemption
+                {requested ? "Requested" : "Request Redemption"}
               </button>
             )}
           </>

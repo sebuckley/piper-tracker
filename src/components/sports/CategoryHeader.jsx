@@ -4,7 +4,8 @@ import { DEFAULT_UI_LABELS } from "../../utils/DEFAULT_LABELS";
 export default function CategoryHeader({
   sport,
   category,
-  updateCategory
+  updateCategory,
+  readOnly = false
 }) {
   const [editing, setEditing] = useState(false);
 
@@ -63,7 +64,7 @@ export default function CategoryHeader({
             </div>
           )}
 
-          <div className="d-flex justify-content-end">
+          {!readOnly && <div className="d-flex justify-content-end">
             <button
               className="btn"
               style={{
@@ -77,11 +78,11 @@ export default function CategoryHeader({
             >
               Edit Category
             </button>
-          </div>
+          </div>}
         </>
       )}
 
-      {editing && (
+      {!readOnly && editing && (
         <>
           <h3
             className="h4 mb-3"

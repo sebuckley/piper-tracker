@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import HoldScreen2 from "./components/reusable/HoldScreen2";
 // import { FaUserLock } from "react-icons/fa";
 // import { FaSpinner } from "react-icons/fa"
@@ -78,6 +78,10 @@ async function logLoginStep(label, action) {
   }
 }
 
+function EditableRoutes() {
+  const isViewer = useAppStore(s => s.isViewer());
+  return isViewer ? <Navigate to="/" replace /> : <Outlet />;
+}
 
 
 export default function App() {
@@ -106,6 +110,8 @@ export default function App() {
   const loadDefaultSports = useAppStore(s => s.loadDefaultSports);
   const loadingData = useAppStore(s => s.loadingData);
   const trackerLoadError = useAppStore(s => s.trackerLoadError);
+  const familyGroupId = useAppStore(s => s.familyGroupId);
+  const deviceId = useAppStore(s => s.deviceId);
 
   // Init auth listener
   useEffect(() => {
@@ -163,6 +169,16 @@ export default function App() {
         console.error("[Login] Selected child's tracker state failed to load; see the failed step above");
       });
   }, [activeChild]);
+
+  useEffect(() => {
+    if (!user || !familyGroupId || !deviceId) return;
+    return useAppStore.getState().watchCurrentDevice();
+  }, [user, familyGroupId, deviceId]);
+
+  useEffect(() => {
+    if (!user || !familyGroupId || !activeChild) return;
+    return useAppStore.getState().watchRewardRequests();
+  }, [user, familyGroupId, activeChild]);
 
   if (authLoading) return <HoldScreen2
       title="Logging You In"
@@ -226,6 +242,7 @@ export default function App() {
             <Route path="/sports" element={<SportsClasses />} />
             <Route path="/rewards" element={<Rewards />} />
 
+            <Route element={<EditableRoutes />}>
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/behaviour" element={<BehaviourSettings />} />
             <Route path="/settings/achievements" element={<AchievementSettings />} />
@@ -254,17 +271,16 @@ export default function App() {
             <Route path="/profile" element={<Profile />} />
 
             <Route path="/sports/add" element={<AddSport />} />
-            <Route path="/sports/:id" element={<SportsDetails />} />
             <Route path="/sports/:id/manage" element={<SportsManage />} />
+            <Route path="/sports/:sportId/categories/:categoryId/skills" element={<RoutineManage />} />
+            <Route path="/sports/:sportId/categories/:categoryId/skills/manage" element={<ManageSkillsPage />} />
+            <Route path="/sports/:sportId/categories/:categoryId/routines/:routineId" element={<RoutineManage />} />
+            <Route path="/sports/:sportId/feedback" element={<SessionFeedback />} />
+            </Route>
+            <Route path="/sports/:id" element={<SportsDetails />} />
 
             <Route path="/sports/:id/categories" element={<SportsCategories />} />
             <Route path="/sports/:sportId/categories/:categoryId" element={<CategoryManage />} />
-            <Route path="/sports/:sportId/categories/:categoryId/skills" element={<RoutineManage />} />
-            <Route path="/sports/:sportId/categories/:categoryId/skills/manage" element={<ManageSkillsPage />}
-/>
-            <Route path="/sports/:sportId/categories/:categoryId/routines/:routineId" element={<RoutineManage />} />
-
-            <Route path="/sports/:sportId/feedback" element={<SessionFeedback />} />
             <Route path="/sports/:sportId/history" element={<SessionHistory />} />
 
 

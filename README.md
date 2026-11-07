@@ -1,5 +1,20 @@
 # React + Vite
 
+## Device access
+
+Owners can rename devices and mark them as child devices in Settings → Device
+Settings. Child devices and viewer accounts can browse and request rewards but
+cannot access settings or the editing screens. Device access cannot grant more
+access than the signed-in account. Changes to the current device are observed
+from Firestore while the app is open. Reward requests are stored in the
+`familyGroups/{family}/children/{child}/rewardRequests` Firestore collection,
+so Firestore rules must allow family members to read and create requests and
+owners to remove them.
+
+These are client-side interface restrictions, not a security boundary: enforce
+permissions in Firestore rules and on the Worker before relying on them to
+protect data.
+
 ## Legacy tracker-state migration
 
 The app recognizes the original unencrypted child state when all seven tracker

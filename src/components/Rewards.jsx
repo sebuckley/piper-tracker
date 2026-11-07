@@ -12,6 +12,7 @@ export default function Rewards() {
   const redeemReward = useAppStore(s => s.redeemReward);
   const requestReward = useAppStore(s => s.requestReward);
   const rewardRequests = useAppStore(s => s.rewardRequests);
+  const rewardRequestError = useAppStore(s => s.rewardRequestError);
 
   const isViewer = useAppStore(s => s.isViewer());
   const isEditor = useAppStore(s => s.isEditor());
@@ -55,10 +56,9 @@ export default function Rewards() {
   const starsFor = (reward, amount) =>
     Math.ceil((amount * Number(reward.cost)) / (Number(reward.amount) || 1));
 
-  const confirmPocketMoney = () => {
+  const confirmPocketMoney = async () => {
     if (pickMode === "request") {
-      requestReward(pickRewardId, { amount: pickAmount });
-      setPickRewardId(null);
+      if (await requestReward(pickRewardId, { amount: pickAmount })) setPickRewardId(null);
       return;
     }
     const res = redeemReward(pickRewardId, { accountId: pickAccountId, amount: pickAmount });
@@ -96,6 +96,7 @@ export default function Rewards() {
       >
         Rewards
       </h2>
+      {rewardRequestError && <div className="alert alert-danger" role="alert">{rewardRequestError}</div>}
 
       {/* ⭐ Star Balance — matches Dashboard */}
  <div className="d-flex justify-content-center mb-4">

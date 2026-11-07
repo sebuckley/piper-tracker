@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -7,10 +7,22 @@ export default function DeviceSettings() {
   const deviceId = useAppStore(s => s.deviceId);
   const effectiveRole = useAppStore(s => s.effectiveRole);
   const familyMembers = useAppStore(s => s.familyMembers);
+  const [editingId, setEditingId] = useState(null);
+  const [deviceName, setDeviceName] = useState("");
+  const [error, setError] = useState("");
 
   const loadDevicesFromFamilyGroup = useAppStore(s => s.loadDevicesFromFamilyGroup);
   const updateDeviceRecord = useAppStore(s => s.updateDeviceRecord);
   const removeDeviceRecord = useAppStore(s => s.removeDeviceRecord);
+  const updateDevice = async (id, changes) => {
+    setError("");
+    try {
+      await updateDeviceRecord(id, changes);
+    } catch (err) {
+      console.error("Could not update device:", err.code || err.name);
+      setError("Could not update the device. Please try again.");
+    }
+  };
 
   useEffect(() => {
     if (familyMembers && familyMembers.length > 0) {
@@ -105,6 +117,7 @@ export default function DeviceSettings() {
       {devices.length === 0 && (
         <div className="text-muted">No devices found.</div>
       )}
+      {error && <div className="alert alert-danger" role="alert">{error}</div>}
 
       {devices.map(d => (
         <div
@@ -134,8 +147,30 @@ export default function DeviceSettings() {
             {/* Device Info */}
             <div style={{ textAlign: "left" }}>
               <strong style={{ color: "#1f2a44", fontWeight: 600 }}>
-                {d.deviceName}
+                {d.deviceName || "Unnamed device"}
               </strong>
+              {editingId === d.id ? (
+                <form onSubmit={async e => {
+                  e.preventDefault();
+                  const name = deviceName.trim();
+                  if (!name) { setError("Enter a device name."); return; }
+                  try {
+                    await updateDeviceRecord(d.id, { deviceName: name });
+                    setEditingId(null);
+                    setError("");
+                  } catch (err) {
+                    console.error("Could not rename device:", err.code || err.name);
+                    setError("Could not rename the device. Please try again.");
+                  }
+                }}>
+                  <label htmlFor={`device-name-${d.id}`} className="small">Device name</label>
+                  <input id={`device-name-${d.id}`} className="form-control form-control-sm" value={deviceName} maxLength={100} onChange={e => setDeviceName(e.target.value)} />
+                  <button type="submit" className="btn btn-sm btn-primary mt-1">Save name</button>{" "}
+                  <button type="button" className="btn btn-sm btn-light mt-1" onClick={() => setEditingId(null)}>Cancel</button>
+                </form>
+              ) : (
+                <button type="button" className="btn btn-sm btn-light ms-2" onClick={() => { setDeviceName(d.deviceName || ""); setEditingId(d.id); }}>Rename</button>
+              )}
 
               <div className="small text-muted">
                 {d.platform} • {d.email}
@@ -179,7 +214,7 @@ export default function DeviceSettings() {
                   type="checkbox"
                   checked={d.approved}
                   onChange={e =>
-                    updateDeviceRecord(d.id, { approved: e.target.checked })
+                    updateDevice(d.id, { approved: e.target.checked })
                   }
                   style={{
                     width: "22px",
@@ -189,23 +224,33 @@ export default function DeviceSettings() {
                 />
               </div>
 
-              {/* Child Access */}
+              <div style={{ textAlign: "left", width: "100%" }}>
+                <label className="small d-flex gap-2 align-items-center">
+                  <input type="checkbox" checked={d.isChildDevice === true}
+                    onChange={e => updateDevice(d.id, { isChildDevice: e.target.checked })} />
+                  Child device
+                </label>
+                <div className="text-muted small">Child devices can view data and request rewards.</div>
+              </div>
+
+              {/* Device access */}
               <div style={{ textAlign: "left", width: "100%" }}>
                 <label className="small" style={{ color: "#1f2a44" }}>
-                  Child Access
+                  Device access
                 </label>
 
                 <select
                   className="form-select form-select-sm"
                   style={{ borderRadius: "12px" }}
-                  value={d.roleOverride || "editor"}
+                  value={d.roleOverride || ""}
                   onChange={e =>
-                    updateDeviceRecord(d.id, {
+                    updateDevice(d.id, {
                       roleOverride: e.target.value || null
                     })
                   }
                 >
-                  <option value="editor">Editor (Default)</option>
+                  <option value="">Use account role</option>
+                  <option value="editor">Editor</option>
                   <option value="viewer">Viewer Only</option>
                 </select>
               </div>

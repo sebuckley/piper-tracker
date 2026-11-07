@@ -7,6 +7,7 @@ export default function SessionHistory() {
 
   const sports = useAppStore(s => s.sportsClasses);
   const feedbackSessions = useAppStore(s => s.sportsFeedback);
+  const isViewer = useAppStore(s => s.isViewer());
 
   console.log(feedbackSessions);
 
@@ -172,13 +173,13 @@ return (
 
             {/* ⭐ RIGHT SIDE BUTTONS */}
             <div className="d-flex flex-row flex-md-column gap-2 text-center">
-              <button
+              {!isViewer && <button
                 className="btn btn-sm btn-danger"
                 style={{ borderRadius: "10px", fontWeight: 600 }}
                 onClick={() => setDeleteConfirm(session.id)}
               >
                 Remove
-              </button>
+              </button>}
             </div>
 
           </div>
@@ -187,7 +188,7 @@ return (
     </div>
 
     {/* ⭐ Delete Confirmation */}
-{deleteConfirm && (
+{!isViewer && deleteConfirm && (
   <div
     style={{
       position: "fixed",

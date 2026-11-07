@@ -1,6 +1,8 @@
 import { nanoid } from "nanoid";
 import { API_BASE } from "../../config/api";
 import { POCKET_MONEY_REWARD_ID, pocketMoneyReward } from "../../data/rewardsData";
+import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore";
+import { db } from "../../hooks/firebaseConfig";
 
 // ---------------------------------------------------------
 // REWARDS + STARS SLICE — FULLY NORMALIZED + AUDIT TRAIL
@@ -13,6 +15,20 @@ export const createRewardsSlice = (set, get) => ({
   starBalance: 0,
   rewardLogs: [],
   rewardRequests: [],   // ⭐ NEW — pending requests
+  rewardRequestError: null,
+
+  watchRewardRequests: () => {
+    const { familyGroupId, activeChild } = get();
+    if (!familyGroupId || !activeChild) return () => {};
+    set({ rewardRequests: [], rewardRequestError: null });
+    const ref = collection(db, "familyGroups", familyGroupId, "children", activeChild, "rewardRequests");
+    return onSnapshot(ref, snapshot => {
+      set({ rewardRequests: snapshot.docs.map(item => ({ ...item.data(), id: item.id })), rewardRequestError: null });
+    }, error => {
+      console.error("Could not load reward requests:", error.code);
+      set({ rewardRequestError: "Could not load reward requests. Please try again later." });
+    });
+  },
 
   // ⭐ Normalize reward
   _normalizeReward(r) {
@@ -68,13 +84,16 @@ export const createRewardsSlice = (set, get) => ({
   // ---------------------------------------------------------
   // ⭐ REQUEST REWARD (viewer/editor)
   // ---------------------------------------------------------
-  requestReward: (rewardId, options = {}) => {
-    const { rewards, rewardRequests } = get();
+  requestReward: async (rewardId, options = {}) => {
+    const { rewards, familyGroupId, activeChild } = get();
     const user = get().user;
     const deviceId = get().deviceId;
 
     const reward = rewards.find(r => r.id === rewardId);
-    if (!reward) return;
+    if (!reward || !familyGroupId || !activeChild) {
+      set({ rewardRequestError: "Could not send this reward request." });
+      return false;
+    }
 
     let cost = reward.cost;
     let amount;
@@ -96,33 +115,35 @@ export const createRewardsSlice = (set, get) => ({
       requestedDeviceId: deviceId ?? null
     };
 
-    set({
-      rewardRequests: [...rewardRequests, newReq]
-    });
+    try {
+      await setDoc(doc(db, "familyGroups", familyGroupId, "children", activeChild, "rewardRequests", rewardId), newReq);
+      set({ rewardRequestError: null });
+      return true;
+    } catch (error) {
+      console.error("Could not send reward request:", error.code);
+      set({ rewardRequestError: "Could not send the reward request. Please try again." });
+      return false;
+    }
   },
 
   // ---------------------------------------------------------
   // ⭐ DENY REWARD REQUEST (owner only)
   // ---------------------------------------------------------
-  denyRewardRequest: (rewardId) => {
-    const { rewardRequests } = get();
-    const user = get().user;
-    const deviceId = get().deviceId;
-
-    const updatedRequests = rewardRequests.map(req =>
-      req.id === rewardId
-        ? {
-            ...req,
-            deniedBy: user?.email ?? "unknown",
-            deniedAt: Date.now(),
-            deniedDeviceId: deviceId ?? null
-          }
-        : req
-    );
-
-    set({
-      rewardRequests: updatedRequests.filter(r => r.id !== rewardId)
-    });
+  denyRewardRequest: async (rewardId) => {
+    const { familyGroupId, activeChild } = get();
+    if (!familyGroupId || !activeChild) {
+      set({ rewardRequestError: "Could not remove the reward request." });
+      return false;
+    }
+    try {
+      await deleteDoc(doc(db, "familyGroups", familyGroupId, "children", activeChild, "rewardRequests", rewardId));
+      set({ rewardRequestError: null });
+      return true;
+    } catch (error) {
+      console.error("Could not remove reward request:", error.code);
+      set({ rewardRequestError: "Could not remove the reward request. Please try again." });
+      return false;
+    }
   },
 
   // ---------------------------------------------------------
@@ -211,6 +232,9 @@ export const createRewardsSlice = (set, get) => ({
       rewardLogs: [newLog, ...get().rewardLogs],
       starBalance: newBalance
     });
+    if (rewardRequests.some(r => r.id === rewardId)) {
+      get().denyRewardRequest(rewardId);
+    }
 
     if (isPocketMoney) {
       // addCredit also persists the child's state

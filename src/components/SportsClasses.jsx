@@ -4,6 +4,7 @@ import { DEFAULT_UI_LABELS } from "../utils/DEFAULT_LABELS";
 
 export default function SportsClasses() {
   const sports = useAppStore(s => s.sportsClasses);
+  const isViewer = useAppStore(s => s.isViewer());
 
 return (
   <div
@@ -44,7 +45,7 @@ return (
         All Sports / Activities
       </h3>
 
-      <Link
+      {!isViewer && <Link
         to="/sports/add"
         className="btn"
         style={{
@@ -56,13 +57,13 @@ return (
         }}
       >
         + Add New Sport / Activity
-      </Link>
+      </Link>}
     </div>
 
     {/* ⭐ No sports */}
     {sports.length === 0 && (
       <div className="text-muted small">
-        No sports added yet. Click “Add New Sport” to begin.
+        {isViewer ? "No sports added yet." : "No sports added yet. Click “Add New Sport” to begin."}
       </div>
     )}
 
@@ -184,7 +185,7 @@ return (
     View Details
   </Link>
 
-  <Link
+  {!isViewer && <Link
     to={`/sports/${sport.templateId}/feedback`}
     className="btn"
     style={{
@@ -196,7 +197,7 @@ return (
     }}
   >
     Add Feedback
-  </Link>
+  </Link>}
 
   <Link
     to={`/sports/${sport.templateId}/history`}

@@ -5,6 +5,7 @@ import { db } from "../../hooks/firebaseConfig";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { DEFAULT_CURRENCY } from "../../utils/currency";
+import { getEffectiveRole } from "../../utils/devicePermissions";
 
 export const createUserSlice = (set, get) => ({
 
@@ -23,6 +24,7 @@ export const createUserSlice = (set, get) => ({
 
   userRole: null,             // owner | editor | viewer
   deviceRoleOverride: null,   // viewer | editor | null
+  isChildDevice: false,
   effectiveRole: null,        // computed
 
   // ---------------------------------------------------------
@@ -44,8 +46,8 @@ export const createUserSlice = (set, get) => ({
   // INTERNAL: compute effective role
   // ---------------------------------------------------------
   computeEffectiveRole: () => {
-    const { userRole, deviceRoleOverride } = get();
-    return deviceRoleOverride ?? userRole;
+    const { userRole, deviceRoleOverride, isChildDevice } = get();
+    return getEffectiveRole(userRole, deviceRoleOverride, isChildDevice);
   },
 
   // ---------------------------------------------------------
@@ -150,7 +152,7 @@ export const createUserSlice = (set, get) => ({
     const deviceRoleOverride =
       data.roleOverride === undefined ? null : data.roleOverride;
 
-    set({ deviceRoleOverride });
+    set({ deviceRoleOverride, isChildDevice: data.isChildDevice === true });
     set({ effectiveRole: get().computeEffectiveRole() });
   },
 
@@ -168,8 +170,10 @@ export const createUserSlice = (set, get) => ({
 
     await updateDoc(deviceRef, { roleOverride: newRole });
 
-    set({ deviceRoleOverride: newRole });
-    set({ effectiveRole: get().computeEffectiveRole() });
+    if (deviceId === get().deviceId) {
+      set({ deviceRoleOverride: newRole });
+      set({ effectiveRole: get().computeEffectiveRole() });
+    }
   },
 
 });

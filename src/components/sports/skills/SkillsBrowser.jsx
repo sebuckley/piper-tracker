@@ -23,6 +23,7 @@ export default function SkillsBrowser({
   suggestions = [],
   onAddSuggestion,
   manageButton = null,
+  readOnly = false,
   pageSize = 10,
   title = "Skills"
 }) {
@@ -60,7 +61,7 @@ export default function SkillsBrowser({
       : [];
 
   const showForm =
-    term.length > 0 && nameMatches.length === 0 && matchingSuggestions.length === 0;
+    !readOnly && term.length > 0 && nameMatches.length === 0 && matchingSuggestions.length === 0;
 
   return (
     <div className="mt-4">
@@ -108,7 +109,7 @@ export default function SkillsBrowser({
               {s.sourceSport ? `from ${s.sourceSport}` : ""}
             </span>
           </span>
-          <button
+          {!readOnly && <button
             className="btn btn-sm"
             style={{
               backgroundColor: "#b300ff",
@@ -122,13 +123,13 @@ export default function SkillsBrowser({
             }}
           >
             + Add
-          </button>
+          </button>}
         </div>
       ))}
 
       {visibleSkills.length === 0 && (
         <div className="text-muted small" style={{ margin: "12px 0" }}>
-          No skills found. If you wish to add a new skill, use the form below.
+          {readOnly ? "No skills found." : "No skills found. If you wish to add a new skill, use the form below."}
         </div>
       )}
 
@@ -212,13 +213,13 @@ export default function SkillsBrowser({
               </div>
             </div>
 
-            <button
+            {!readOnly && onRemove && <button
               className="btn btn-sm btn-danger"
               style={{ borderRadius: "10px", height: "32px" }}
               onClick={() => onRemove(skill)}
             >
               Remove
-            </button>
+            </button>}
           </div>
         );
       })}

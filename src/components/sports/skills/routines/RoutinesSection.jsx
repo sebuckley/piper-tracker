@@ -6,7 +6,8 @@ export default function RoutinesSection({
   sport,
   category,
   categoryLevels,
-  deleteRoutine
+  deleteRoutine,
+  readOnly = false
 }) {
   const navigate = useNavigate();
   const [showAddRoutine, setShowAddRoutine] = useState(false);
@@ -23,7 +24,7 @@ export default function RoutinesSection({
       </h3>
 
       {/* ⭐ Add Button */}
-      <div className="d-flex justify-content-end align-items-center mb-3">
+      {!readOnly && <div className="d-flex justify-content-end align-items-center mb-3">
         <button
           className="btn btn-sm"
           style={{
@@ -37,10 +38,10 @@ export default function RoutinesSection({
         >
           + Add Routine
         </button>
-      </div>
+      </div>}
 
       {/* ⭐ Add Routine Form */}
-      {showAddRoutine && (
+      {!readOnly && showAddRoutine && (
         <AddRoutineForm
           sportId={sport.id}
           categoryId={category.id}
@@ -90,7 +91,7 @@ export default function RoutinesSection({
           </div>
 
           {/* ⭐ Controls */}
-          <div className="d-flex gap-2 align-items-center">
+          {!readOnly && <div className="d-flex gap-2 align-items-center">
 
             {/* Manage */}
             <button
@@ -119,7 +120,7 @@ export default function RoutinesSection({
             >
               Remove
             </button>
-          </div>
+          </div>}
         </div>
       ))}
     </div>

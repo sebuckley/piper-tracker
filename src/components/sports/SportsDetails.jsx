@@ -5,6 +5,7 @@ import { formatAddress } from "../../utils/formatAddress";
 import { DEFAULT_UI_LABELS } from "../../utils/DEFAULT_LABELS";
 
 export default function SportsDetails() {
+  const isViewer = useAppStore(s => s.isViewer());
   const { id } = useParams();
   const sports = useAppStore(s => s.sportsClasses);
 
@@ -173,7 +174,7 @@ return (
       {/* ⭐ Action Buttons */}
       <div className="d-flex gap-3 flex-wrap justify-content-end">
 
-        <Link
+        {!isViewer && <Link
           to={`/sports/${sport.templateId}/manage`}
           className="btn btn-sm"
           style={{
@@ -185,9 +186,9 @@ return (
           }}
         >
           Manage
-        </Link>
+        </Link>}
 
-        <Link
+        {!isViewer && <Link
           to={`/sports/${sport.templateId}/feedback`}
           className="btn btn-sm"
           style={{
@@ -199,7 +200,7 @@ return (
           }}
         >
           Session Feedback
-        </Link>
+        </Link>}
 
         <Link
           to={`/sports/${sport.templateId}/history`}

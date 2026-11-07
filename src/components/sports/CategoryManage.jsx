@@ -9,6 +9,7 @@ import CategoryHeader from "./CategoryHeader";
 export default function CategoryManage() {
   const { sportId, categoryId } = useParams();
   const navigate = useNavigate();
+  const isViewer = useAppStore(s => s.isViewer());
 
   const {
     sportsClasses,
@@ -136,6 +137,7 @@ export default function CategoryManage() {
         sport={sport}
         category={category}
         updateCategory={updateCategory}
+        readOnly={isViewer}
       />
 
       {/* ⭐ Skills Section */}
@@ -144,6 +146,7 @@ export default function CategoryManage() {
         category={category}
         addSkill={handleAddSkill}
         deleteSkill={deleteSkill}
+        readOnly={isViewer}
         newSkillName={newSkillName}
         setNewSkillName={setNewSkillName}
         newSkillLevel={newSkillLevel}
@@ -160,6 +163,7 @@ export default function CategoryManage() {
         category={category}
         addRoutine={handleAddRoutine}
         deleteRoutine={deleteRoutine}
+        readOnly={isViewer}
         newRoutineName={newRoutineName}
         setNewRoutineName={setNewRoutineName}
         newRoutineLevel={newRoutineLevel}
