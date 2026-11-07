@@ -710,6 +710,66 @@ export default {
     // CHILD STATE ROUTES
     // ---------------------------------------------------------
 
+    if (method === "POST" && /^\/api\/state\/[^/]+\/migrate$/.test(path)) {
+      const childId = path.split("/")[3];
+      const contentLength = Number(request.headers.get("Content-Length"));
+      if (contentLength > 10 * 1024 * 1024) return jsonError("Migration request too large", 413);
+      let migration;
+      try {
+        if (!request.body) return jsonError("Invalid migration request", 400);
+        const reader = request.body.getReader();
+        const decoder = new TextDecoder();
+        let body = "";
+        let bytes = 0;
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          bytes += chunk.value.byteLength;
+          if (bytes > 10 * 1024 * 1024) {
+            await reader.cancel();
+            return jsonError("Migration request too large", 413);
+          }
+          body += decoder.decode(chunk.value, { stream: true });
+        }
+        migration = JSON.parse(body + decoder.decode());
+      } catch {
+        return jsonError("Invalid migration request", 400);
+      }
+      if (!migration || typeof migration.originalHash !== "string" ||
+          !/^[a-f0-9]{64}$/.test(migration.originalHash) ||
+          !migration.record?.payload || !Array.isArray(migration.record.payload.iv) ||
+          !Array.isArray(migration.record.payload.cipher)) {
+        return jsonError("Invalid migration request", 400);
+      }
+
+      const stateKey = `state:${childId}`;
+      const original = await env.TRACKER_DATA.get(stateKey);
+      if (original === null) return jsonError("Original state not found", 404);
+      const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(original));
+      const originalHash = Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, "0")).join("");
+      if (originalHash !== migration.originalHash) return jsonError("Original state changed; reload before migrating", 409);
+
+      let oldState;
+      try {
+        oldState = JSON.parse(original);
+      } catch {
+        return jsonError("Original state is invalid JSON", 409);
+      }
+      const fields = ["sportsClasses", "behaviourLogs", "achievements", "rewards", "routines", "rewardLogs", "sportsFeedback"];
+      if (!oldState || typeof oldState !== "object" || Array.isArray(oldState) ||
+          Object.hasOwn(oldState, "payload") || !fields.every(field => Array.isArray(oldState[field])) ||
+          typeof oldState.starBalance !== "number" || !Number.isFinite(oldState.starBalance)) {
+        return jsonError("Original state is not a recognized legacy record", 409);
+      }
+
+      const backupKey = `migration-backup:${childId}:${crypto.randomUUID()}`;
+      await env.TRACKER_DATA.put(backupKey, original);
+      await env.TRACKER_DATA.put(stateKey, JSON.stringify(migration.record));
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200, headers: { ...cors(), "Content-Type": "application/json" }
+      });
+    }
+
     if (method === "GET" && path.startsWith("/api/state/")) {
       const childId = path.split("/")[3];
       const json = await env.TRACKER_DATA.get(`state:${childId}`);

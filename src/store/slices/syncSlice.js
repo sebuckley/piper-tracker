@@ -1,69 +1,123 @@
 import { API_BASE } from "../../config/api";
 import { normalizeSports, syncSportsWithTemplates } from "./sportsSlice";
 import { POCKET_MONEY_REWARD_ID, pocketMoneyReward } from "../../data/rewardsData";
+import { hashText, isLegacyTrackerState, prepareLegacyMigration } from "../../utils/legacyTrackerMigration";
 import {
   encryptPayload,
   decryptPayload,
   base64ToBytes
 } from "../../utils/crypto";
 
-export const createSyncSlice = (set, get) => ({
+export const createSyncSlice = (set, get) => {
+let loadVersion = 0;
+const activeLoads = new Map();
+return ({
 
   loadingData: true,
+  trackerLoadError: null,
+  loadedTrackerChildId: null,
+  trackerStateExtras: {},
 
   // ---------------------------------------------------------
   // LOAD TRACKER STATE FROM KV (per child)
   // ---------------------------------------------------------
- async loadFromKV(childId) {
+ loadFromKV(childId) {
   if (!childId) {
     console.warn("[Login:KV] Skipped: no active child");
-    return false;
+    return Promise.resolve(false);
   }
+  const pending = activeLoads.get(childId);
+  if (pending && pending.version === loadVersion) return pending.promise;
+  const version = ++loadVersion;
+  const load = (async () => {
+  const current = () => version === loadVersion && get().activeChild === childId;
+  const fail = message => {
+    console.error(`[Login:KV] ${message}`);
+    if (current()) set({ loadingData: false, trackerLoadError: message, loadedTrackerChildId: null });
+    return false;
+  };
+  set({ loadingData: true, trackerLoadError: null, loadedTrackerChildId: null });
 
   console.info("[Login:KV] Fetching child state");
-  const res = await fetch(`${API_BASE}/api/state/${childId}`);
-  if (!res.ok) {
-    console.error(`[Login:KV] State request failed (HTTP ${res.status})`);
-    set({ loadingData: false });
-    return false;
-  }
-
-  console.info("[Login:KV] State received; parsing response");
-  let payload;
+  let res, originalText, record;
   try {
-    ({ payload } = await res.json());
+    res = await fetch(`${API_BASE}/api/state/${childId}`);
+    if (!res.ok) return fail(`State request failed (HTTP ${res.status}).`);
+    originalText = await res.text();
+    record = JSON.parse(originalText);
   } catch {
-    console.error("[Login:KV] State response contains invalid JSON");
-    set({ loadingData: false });
-    return false;
+    return fail("Unable to fetch or parse the saved state.");
   }
 
   const encryptionKey = get().encryptionKey;
-  if (!encryptionKey) {
-    console.error("[Login:KV] Cannot decrypt state: family encryption key is missing");
-    set({ loadingData: false });
-    return false;
+  if (!encryptionKey) return fail("Family encryption key is missing.");
+  let rawKeyBytes;
+  try {
+    rawKeyBytes = typeof encryptionKey === "string" ? base64ToBytes(encryptionKey) : encryptionKey;
+  } catch {
+    return fail("Family encryption key has an invalid encoding.");
   }
-
-  console.info("[Login:KV] Decrypting child state");
-  const rawKeyBytes =
-    typeof encryptionKey === "string"
-      ? base64ToBytes(encryptionKey)
-      : encryptionKey;
 
   let cloud;
-
-  // ⭐ Graceful decrypt failure
   try {
-    cloud = await decryptPayload(payload, rawKeyBytes);
+    if (isLegacyTrackerState(record)) {
+      console.info("[Login:KV] Legacy state found; encrypting and verifying before migration");
+      const payload = await prepareLegacyMigration(record, rawKeyBytes);
+      if (!current()) return false;
+      const migrated = {
+        meta: {
+          version: 1,
+          updatedAt: new Date().toISOString(),
+          updatedBy: get().userProfile?.uid,
+          familyGroupId: get().familyGroupId,
+          childId,
+          deviceId: get().deviceId,
+          appVersion: "1.0.0"
+        },
+        payload
+      };
+      const response = await fetch(`${API_BASE}/api/state/${childId}/migrate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ originalHash: await hashText(originalText), record: migrated })
+      });
+      if (!response.ok) return fail(`Legacy migration failed (HTTP ${response.status}); saved data has not been loaded.`);
+      console.info("[Login:KV] Backup created and encrypted state saved; verifying storage");
+      let verified = false;
+      for (let attempt = 0; attempt < 14; attempt++) {
+        const check = await fetch(`${API_BASE}/api/state/${childId}`);
+        if (!check.ok) return fail(`Migration verification failed (HTTP ${check.status}).`);
+        const saved = await check.json();
+        if (JSON.stringify(saved.payload) === JSON.stringify(payload)) {
+          const restored = await decryptPayload(saved.payload, rawKeyBytes);
+          verified = JSON.stringify(restored) === JSON.stringify(record);
+          if (verified) break;
+        }
+        if (!current()) return false;
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+      if (!verified) return fail("Migration could not be verified yet. Retry after storage has updated.");
+      await new Promise(resolve => setTimeout(resolve, 1100));
+      if (!current()) return false;
+      cloud = record;
+      console.info("[Login:KV] Migration verified");
+    } else {
+      if (!record?.payload) return fail("Unrecognized or missing tracker state; no data was changed.");
+      console.info("[Login:KV] Decrypting child state");
+      cloud = await decryptPayload(record.payload, rawKeyBytes);
+    }
   } catch {
-    console.error("[Login:KV] Could not decrypt child state");
-    set({ loadingData: false });
-    return false;
+    return fail("Unable to decrypt or migrate the saved state. No empty data will be saved.");
   }
 
+  if (!current()) return false;
+  if (!cloud || typeof cloud !== "object" || Array.isArray(cloud)) {
+    return fail("Saved tracker state has an invalid format.");
+  }
   console.info("[Login:KV] Applying child state");
   const next = {};
+  const knownFields = new Set(["sportsClasses", "behaviourLogs", "achievements", "rewards", "routines", "starBalance", "rewardLogs", "sportsFeedback", "bankAccounts"]);
+  next.trackerStateExtras = Object.fromEntries(Object.entries(cloud).filter(([key]) => !knownFields.has(key)));
 
   // Existing fields
   if (Array.isArray(cloud.sportsClasses)) next.sportsClasses = normalizeSports(cloud.sportsClasses);
@@ -86,9 +140,7 @@ export const createSyncSlice = (set, get) => ({
   // ⭐ NEW: Load bank accounts
   next.bankAccounts = cloud.bankAccounts ?? {};
 
-  if (Object.keys(next).length > 0) {
-    set(next);
-  }
+  set({ ...next, loadedTrackerChildId: childId });
 
   // Bring sport structure up to date with the latest templates
   if (get().sportsClasses?.length) {
@@ -102,7 +154,7 @@ export const createSyncSlice = (set, get) => ({
       if (changed) {
         console.info("[Login:KV] Sport structure changed; saving updates");
         set({ sportsClasses: sports });
-        get().saveToKV(childId);
+        await get().saveToKV(childId);
       }
       console.info("[Login:KV] Sport template synchronization completed");
     } catch {
@@ -110,9 +162,20 @@ export const createSyncSlice = (set, get) => ({
     }
   }
 
-  set({ loadingData: false });
+  if (current()) set({ loadingData: false });
   console.info("[Login:KV] Child state load completed");
   return true;
+  })().catch(() => {
+    console.error("[Login:KV] Unexpected error loading child state");
+    if (version === loadVersion && get().activeChild === childId) {
+      set({ loadingData: false, trackerLoadError: "Unable to load saved data. Check the console and retry.", loadedTrackerChildId: null });
+    }
+    return false;
+  }).finally(() => {
+    if (activeLoads.get(childId)?.promise === load) activeLoads.delete(childId);
+  });
+  activeLoads.set(childId, { version, promise: load });
+  return load;
 },
 
 
@@ -124,6 +187,10 @@ export const createSyncSlice = (set, get) => ({
     if (!childId) return;
 
     const state = get();
+    if (state.activeChild !== childId || state.loadedTrackerChildId !== childId) {
+      console.error("[Login:KV] Save blocked: child state has not been successfully loaded");
+      return;
+    }
     const encryptionKey = state.encryptionKey;
 
     if (!encryptionKey) return;
@@ -134,6 +201,7 @@ export const createSyncSlice = (set, get) => ({
         : encryptionKey;
 
     const trackerState = {
+      ...state.trackerStateExtras,
       sportsClasses: state.sportsClasses,
       behaviourLogs: state.behaviourLogs,
       achievements: state.achievements,
@@ -170,18 +238,23 @@ export const createSyncSlice = (set, get) => ({
       appVersion: "1.0.0"
     };
 
-    await fetch(`${API_BASE}/api/state/${childId}`, {
+    if (get().activeChild !== childId || get().loadedTrackerChildId !== childId) {
+      console.error("[Login:KV] Save blocked: the selected child changed");
+      return;
+    }
+    const response = await fetch(`${API_BASE}/api/state/${childId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ meta, payload: encrypted })
     });
+    if (!response.ok) console.error(`[Login:KV] Save failed (HTTP ${response.status})`);
   },
 
   // ---------------------------------------------------------
   // DEV RESET (KV only)
   // ---------------------------------------------------------
   resetAllDev: async () => {
-    if (process.env.NODE_ENV !== "development") return;
+    if (!import.meta.env.DEV) return;
 
     const uid = get().userProfile?.uid;
     const childId = get().activeChild;
@@ -212,3 +285,4 @@ export const createSyncSlice = (set, get) => ({
     }));
   }
 });
+};

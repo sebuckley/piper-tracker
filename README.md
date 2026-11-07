@@ -1,5 +1,26 @@
 # React + Vite
 
+## Legacy tracker-state migration
+
+The app recognizes the original unencrypted child state when all seven tracker
+arrays and a numeric `starBalance` are present. On the first load it encrypts
+and checks the complete original record using the family's Firestore key. The
+Worker checks that the original has not changed, saves a copy under
+`migration-backup:<child-id>:<uuid>` in `TRACKER_DATA`, and writes the encrypted
+record. The app reads it back and verifies it before enabling changes.
+
+Deploy the Worker before the frontend. Before migrating, independently back up
+the current KV record and retain the Firestore encryption key. Close other app
+sessions and use one device during migration: KV is eventually consistent and
+the hash check is not an atomic compare-and-swap. Verification may need to wait
+for KV caches to update. If loading fails, saving is blocked; retry or restore
+from the backup rather than creating replacement data.
+
+The migration backup is **unencrypted** and does not expire. After confirming
+the encrypted data is correct and storing a secure backup, remove the plaintext
+backup from KV when it is no longer needed. The existing Worker routes do not
+authenticate requests; restrict access before relying on them for private data.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

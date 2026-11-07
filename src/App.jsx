@@ -61,7 +61,11 @@ async function logLoginStep(label, action) {
 
   try {
     const result = await action();
-    console.info(`[Login] ${label}: completed in ${Date.now() - start}ms`);
+    if (result === false) {
+      console.warn(`[Login] ${label}: did not complete (${Date.now() - start}ms)`);
+    } else {
+      console.info(`[Login] ${label}: completed in ${Date.now() - start}ms`);
+    }
     return result;
   } catch (error) {
     const code = typeof error?.code === "string" && /^[\w/-]+$/.test(error.code)
@@ -84,10 +88,6 @@ export default function App() {
 
 
   const activeChild = useAppStore(s => s.activeChild);
-  const children = useAppStore(s => s.children || []);
-
-  const child = children.find(c => c.id === activeChild) || null;
-
   const isViewer = useAppStore(s => s.isViewer());
   const isEditor = useAppStore(s => s.isEditor());
   const isOwner = useAppStore(s => s.isOwner());
@@ -105,6 +105,7 @@ export default function App() {
   const loadFromKV = useAppStore(s => s.loadFromKV);
   const loadDefaultSports = useAppStore(s => s.loadDefaultSports);
   const loadingData = useAppStore(s => s.loadingData);
+  const trackerLoadError = useAppStore(s => s.trackerLoadError);
 
   // Init auth listener
   useEffect(() => {
@@ -171,6 +172,20 @@ export default function App() {
 
   if (!user) return <Login />;
 
+  if (trackerLoadError) return (
+    <div className="container mt-5" style={{ maxWidth: "600px" }}>
+      <div className="alert alert-danger" role="alert">
+        <h2 className="h5">Unable to load saved data</h2>
+        <p>{trackerLoadError}</p>
+        <p>Changes are blocked to protect the saved data. Check the browser console for details.</p>
+        <div className="d-flex gap-2">
+          <button className="btn btn-primary" onClick={() => loadFromKV(activeChild)}>Retry</button>
+          <button className="btn btn-outline-secondary" onClick={() => useAppStore.getState().logout()}>Sign out</button>
+        </div>
+      </div>
+    </div>
+  );
+
   if (loadingData) return  <HoldScreen2
       title="Loading Your Data"
       subtitle="Fetching your latest progress, achievements and routines."
@@ -220,7 +235,7 @@ export default function App() {
             <Route path="/settings/child" element={<ChildManager />} />
             <Route path="/settings/bank" element={<BankAccountSettings />} />
 
-            {process.env.NODE_ENV === "development" && (
+            {import.meta.env.DEV && (
               <>
               <Route path="/settings/admin/" element={<AdminPanel />} />
               <Route path="/settings/admin/dev" element={<DevSettings />} />
