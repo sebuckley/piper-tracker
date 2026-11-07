@@ -348,7 +348,15 @@ const createRawSportsSlice = (set, get) => ({
 
   loadDefaultSports: async () => {
     const res = await fetch(`${API_BASE}/api/templates`);
+    if (!res.ok) {
+      const error = new Error("Could not load sport templates");
+      error.code = `http/${res.status}`;
+      throw error;
+    }
     const templates = await res.json();
+    if (!Array.isArray(templates)) {
+      throw new Error("Invalid sport templates response");
+    }
     set({ defaultSports: templates });
   },
 

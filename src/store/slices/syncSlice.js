@@ -15,30 +15,37 @@ export const createSyncSlice = (set, get) => ({
   // LOAD TRACKER STATE FROM KV (per child)
   // ---------------------------------------------------------
  async loadFromKV(childId) {
-  if (!childId) return;
-
-  const res = await fetch(`${API_BASE}/api/state/${childId}`);
-  if (!res.ok) {
-    set({ loadingData: false });
-    return;
+  if (!childId) {
+    console.warn("[Login:KV] Skipped: no active child");
+    return false;
   }
 
-  let meta, payload;
-  try {
-    ({ meta, payload } = await res.json());
-  } catch (err) {
-    console.warn("KV load: invalid JSON", err);
+  console.info("[Login:KV] Fetching child state");
+  const res = await fetch(`${API_BASE}/api/state/${childId}`);
+  if (!res.ok) {
+    console.error(`[Login:KV] State request failed (HTTP ${res.status})`);
     set({ loadingData: false });
-    return;
+    return false;
+  }
+
+  console.info("[Login:KV] State received; parsing response");
+  let payload;
+  try {
+    ({ payload } = await res.json());
+  } catch {
+    console.error("[Login:KV] State response contains invalid JSON");
+    set({ loadingData: false });
+    return false;
   }
 
   const encryptionKey = get().encryptionKey;
   if (!encryptionKey) {
-    console.warn("KV load: no encryption key");
+    console.error("[Login:KV] Cannot decrypt state: family encryption key is missing");
     set({ loadingData: false });
-    return;
+    return false;
   }
 
+  console.info("[Login:KV] Decrypting child state");
   const rawKeyBytes =
     typeof encryptionKey === "string"
       ? base64ToBytes(encryptionKey)
@@ -49,12 +56,13 @@ export const createSyncSlice = (set, get) => ({
   // ⭐ Graceful decrypt failure
   try {
     cloud = await decryptPayload(payload, rawKeyBytes);
-  } catch (err) {
-    console.warn("KV load: decrypt failed, continuing with empty state", err);
+  } catch {
+    console.error("[Login:KV] Could not decrypt child state");
     set({ loadingData: false });
-    return;
+    return false;
   }
 
+  console.info("[Login:KV] Applying child state");
   const next = {};
 
   // Existing fields
@@ -85,21 +93,26 @@ export const createSyncSlice = (set, get) => ({
   // Bring sport structure up to date with the latest templates
   if (get().sportsClasses?.length) {
     try {
+      console.info("[Login:KV] Synchronizing sport templates");
       if (!get().defaultSports?.length) await get().loadDefaultSports();
       const { sports, changed } = syncSportsWithTemplates(
         get().sportsClasses,
         get().defaultSports
       );
       if (changed) {
+        console.info("[Login:KV] Sport structure changed; saving updates");
         set({ sportsClasses: sports });
         get().saveToKV(childId);
       }
-    } catch (err) {
-      console.warn("Template sync failed", err);
+      console.info("[Login:KV] Sport template synchronization completed");
+    } catch {
+      console.warn("[Login:KV] Sport template synchronization failed");
     }
   }
 
   set({ loadingData: false });
+  console.info("[Login:KV] Child state load completed");
+  return true;
 },
 
 

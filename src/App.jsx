@@ -52,6 +52,28 @@ import SessionHistory from "./components/sports/SessionHistory";
 import BankAccounts from "./components/bank/BankAccount";
 import BankAccountHistory from "./components/bank/BankAccountHistory";
 
+async function logLoginStep(label, action) {
+  const start = Date.now();
+  console.info(`[Login] ${label}: started`);
+  const warning = setTimeout(() => {
+    console.warn(`[Login] ${label}: still waiting after 10 seconds`);
+  }, 10000);
+
+  try {
+    const result = await action();
+    console.info(`[Login] ${label}: completed in ${Date.now() - start}ms`);
+    return result;
+  } catch (error) {
+    const code = typeof error?.code === "string" && /^[\w/-]+$/.test(error.code)
+      ? error.code
+      : "unknown";
+    console.error(`[Login] ${label}: failed after ${Date.now() - start}ms (code: ${code})`);
+    throw error;
+  } finally {
+    clearTimeout(warning);
+  }
+}
+
 
 
 export default function App() {
@@ -86,27 +108,45 @@ export default function App() {
 
   // Init auth listener
   useEffect(() => {
+    console.info("[Login] Initializing device and authentication listener");
+    useAppStore.getState().initDevice();
     initAuth();
   }, []);
 
   // Load Firestore + KV after login
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      console.info("[Login] Waiting for a signed-in user before loading account data");
+      return;
+    }
 
     const uid = user.uid;
 
     (async () => {
-      await loadUserIdentity(uid);
-      await loadFamilyGroup(uid);
-      await loadChildrenFromFamilyGroup();
-      await loadDevicesFromFamilyGroup();
-      await refreshDeviceRecord(uid);
-      await loadActiveChildOnLogin();
-      await loadDefaultSports();
+      try {
+        await logLoginStep("Load user identity", () => loadUserIdentity(uid));
+        if (!useAppStore.getState().userProfile?.uid) {
+          console.warn("[Login] User profile was not found");
+        }
+        await logLoginStep("Load family group", () => loadFamilyGroup(uid));
+        if (!useAppStore.getState().familyGroupId) {
+          console.warn("[Login] No family group is available");
+        }
+        await logLoginStep("Load children", () => loadChildrenFromFamilyGroup());
+        await logLoginStep("Load devices", () => loadDevicesFromFamilyGroup());
+        await logLoginStep("Refresh device record", () => refreshDeviceRecord(uid));
+        await logLoginStep("Select active child", () => loadActiveChildOnLogin());
+        await logLoginStep("Load sport templates", () => loadDefaultSports());
 
-      const childId = useAppStore.getState().activeChild;
-      if (childId) {
-        await loadFromKV(childId);
+        const childId = useAppStore.getState().activeChild;
+        if (childId) {
+          const loaded = await logLoginStep("Load child tracker state", () => loadFromKV(childId));
+          if (loaded === false) console.error("[Login] Child tracker state was not loaded; see KV diagnostics above");
+        } else {
+          console.warn("[Login] No active child selected; tracker state cannot be loaded");
+        }
+      } catch {
+        console.error("[Login] Account initialization stopped; see the failed step above");
       }
     })();
   }, [user]);
@@ -114,7 +154,13 @@ export default function App() {
   // Reload KV when active child changes
   useEffect(() => {
     if (!activeChild) return;
-    loadFromKV(activeChild);
+    logLoginStep("Load tracker state after child selection", () => loadFromKV(activeChild))
+      .then(loaded => {
+        if (loaded === false) console.error("[Login] Selected child's tracker state was not loaded; see KV diagnostics above");
+      })
+      .catch(() => {
+        console.error("[Login] Selected child's tracker state failed to load; see the failed step above");
+      });
   }, [activeChild]);
 
   if (authLoading) return <HoldScreen2
@@ -123,12 +169,12 @@ export default function App() {
   
     />;
 
+  if (!user) return <Login />;
+
   if (loadingData) return  <HoldScreen2
       title="Loading Your Data"
       subtitle="Fetching your latest progress, achievements and routines."
     />;
-
-  if (!user) return <Login />;
 
   return (
     <HashRouter>

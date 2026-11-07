@@ -6,10 +6,6 @@ export default function Login() {
   const login = useAppStore(s => s.login);
   const error = useAppStore(s => s.authError);
   const user = useAppStore(s => s.user);
-  const initAuth = useAppStore(s => s.initAuth);
-
-  // Unified device slice
-  const initDevice = useAppStore(s => s.initDevice);
   const refreshDeviceRecord = useAppStore(s => s.refreshDeviceRecord);
 
   // Unified user + family + children slices
@@ -25,14 +21,6 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  // ---------------------------------------------------------
-  // INIT DEVICE + AUTH LISTENER
-  // ---------------------------------------------------------
-  useEffect(() => {
-    initDevice();
-    initAuth();
-  }, []);
 
   // ---------------------------------------------------------
   // LOGIN SIDE EFFECTS (Firestore + KV)
