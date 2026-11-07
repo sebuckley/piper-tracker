@@ -1,20 +1,20 @@
-import { useState } from "react"; 
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAppStore } from "../../store/useAppStore";
 
 export default function SessionHistory() {
-  const { id } = useParams();
+  const { sportId } = useParams();
 
   const sports = useAppStore(s => s.sportsClasses);
-  const feedback = useAppStore(s => s.sportsFeedback);
+  const feedbackSessions = useAppStore(s => s.sportsFeedback);
 
-  const updateFeedback = useAppStore(s => s.updateFeedback);
-  const removeFeedback = useAppStore(s => s.removeFeedback);
+  console.log(feedbackSessions);
 
-  const [editingSession, setEditingSession] = useState(null);
+  const removeSession = useAppStore(s => s.removeFeedbackSession);
+
+  const sport = sports.find(s => s.templateId === sportId);
+
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-
-  const sport = sports.find(s => s.id === id);
 
   if (!sport) {
     return (
@@ -24,324 +24,245 @@ export default function SessionHistory() {
     );
   }
 
-  const sportFeedback = feedback.filter(f => f.sportId === sport.id);
-
-  // ⭐ Save edited session
-  const saveEditedSession = (updated) => {
-    updateFeedback(updated.id, updated);
-    setEditingSession(null);
-  };
-
-  // ⭐ Delete session
-  const deleteSession = (id) => {
-    removeFeedback(id);
-    setDeleteConfirm(null);
-  };
-
+  // Older sessions may store the instance id or only the sport name
+  const sessions = feedbackSessions
+    .filter(
+      f =>
+        f.sportId === sport.templateId ||
+        f.sportId === sport.id ||
+        (f.sportName && f.sportName === sport.name)
+    )
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
 return (
-  <div className="container mt-4">
-
+  <div
+    className="container mt-4"
+    style={{
+      maxWidth: "1200px",
+      background: "white",
+      borderRadius: "16px",
+      padding: "24px",
+      border: "2px solid #e6e6e6"
+    }}
+  >
     {/* ⭐ Breadcrumb */}
-    <div className="mb-3">
-      <nav style={{ fontWeight: 600, fontSize: "18px", textAlign: "left" }}>
-        <Link to="/sports" style={{ color: "#b300ff", textDecoration: "none" }}>
-          Sports
-        </Link>
-
-        <span style={{ color: "#1f2a44", margin: "0 6px" }}>›</span>
-
-        <Link
-          to={`/sports/${sport.id}`}
-          style={{ color: "#b300ff", textDecoration: "none" }}
-        >
-          {sport.name}
-        </Link>
-
-        <span style={{ color: "#1f2a44", margin: "0 6px" }}>›</span>
-
-        <span style={{ color: "#1f2a44" }}>Session History</span>
-      </nav>
-    </div>
+    <nav className="mb-3" style={{ fontWeight: 600, fontSize: "18px" }}>
+      <Link to="/sports" style={{ color: "#b300ff", textDecoration: "none" }}>
+        Sports
+      </Link>
+      <span style={{ margin: "0 6px", color: "#1f2a44" }}>›</span>
+      <Link
+        to={`/sports/${sport.templateId}`}
+        style={{ color: "#b300ff", textDecoration: "none" }}
+      >
+        {sport.name}
+      </Link>
+      <span style={{ margin: "0 6px", color: "#1f2a44" }}>›</span>
+      <span style={{ color: "#1f2a44" }}>Session History</span>
+    </nav>
 
     {/* ⭐ Page Title */}
     <h2
-      className="h3 mt-3 mb-4"
-      style={{
-        color: "#b300ff",
-        fontWeight: 700,
-        letterSpacing: "0.5px"
-      }}
+      className="h3 mb-4 text-center"
+      style={{ color: "#b300ff", fontWeight: 700, letterSpacing: "0.5px" }}
     >
       {sport.name} — Session History
     </h2>
 
-    {/* ⭐ Sessions List */}
-    {sportFeedback.length === 0 && (
+    {/* ⭐ No Sessions */}
+    {sessions.length === 0 && (
       <div className="text-muted small">No feedback sessions recorded yet.</div>
     )}
 
+    {/* ⭐ Sessions List */}
     <div className="d-flex flex-column gap-3">
-      {sportFeedback.map(session => {
-        const category = sport.categories.find(c => c.id === session.categoryId);
-        const routine = category?.routines.find(r => r.id === session.routineId);
-
-        return (
-<div
-  key={session.id}
-  className="p-3"
-  style={{
-    borderRadius: "12px",
-    border: "1px solid #e6e6e6",
-    backgroundColor: "#ffffff"
-  }}
->
-  <div className="d-flex flex-column flex-md-row justify-content-between gap-5">
-
-    {/* ⭐ LEFT SIDE (two rows, centered on mobile) */}
-    <div
-      className="d-flex flex-column text-center text-md-start"
-      style={{ flexGrow: 1 }}
-    >
-
-      {/* Row 1 — Date */}
-      <div
-        style={{
-          color: "#b300ff",
-          fontWeight: 700,
-          fontSize: "16px",
-          marginBottom: "6px"
-        }}
-      >
-        {new Date(session.date).toLocaleDateString("en-GB", {
-          weekday: "long",
-          year: "numeric",
-          month: "short",
-          day: "numeric"
-        })}
-      </div>
-
-      {/* ⭐ Row 2 — FULL WIDTH */}
-      <div
-        className="
-          d-flex 
-          flex-column flex-md-row 
-          align-items-center align-items-md-center 
-          gap-3
-          text-center text-md-start
-        "
-        style={{ width: "100%" }}
-      >
-
-        {/* Category — left */}
+      {sessions.map(session => (
         <div
-          className="small"
+          key={session.id}
+          className="p-3"
           style={{
-            color: "#1f2a44",
-            flex: "0 0 auto",
-            minWidth: "140px"
+            background: "white",
+            borderRadius: "16px",
+            border: "1px solid #e6e6e6"
           }}
         >
-          <strong>Category:</strong>{" "}
-          <span style={{ color: "#b300ff", fontWeight: 600 }}>
-            {category?.name || "Unknown"}
-          </span>
-        </div>
+          <div className="d-flex flex-column flex-md-row justify-content-between gap-4">
 
-        {/* Notes — center, flexible */}
-        <div
-          className="small"
-          style={{
-            color: "#1f2a44",
-            flex: 1,
-            textAlign: "center"
-          }}
-        >
-          <strong>Notes:</strong> {session.notes || "No notes"}
-        </div>
+            {/* ⭐ LEFT SIDE */}
+            <div style={{ flexGrow: 1 }}>
+              
+              {/* Date */}
+              <div
+                style={{
+                  color: "#b300ff",
+                  fontWeight: 700,
+                  fontSize: "16px",
+                  marginBottom: "6px"
+                }}
+              >
+                {new Date(session.date).toLocaleDateString("en-GB", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric"
+                })}
+              </div>
 
-        {/* Score — right */}
-        <div
-          className="small"
-          style={{
-            color: "#b300ff",
-            fontWeight: 700,
-            flex: "0 0 auto",
-            minWidth: "80px",
-            textAlign: "right"
-          }}
-        >
-          ⭐ {session.score}
+              {/* ⭐ Score + Stars */}
+              <div className="small mb-2 d-flex align-items-center gap-3">
+                <span
+                  className="badge"
+                  style={{ backgroundColor: session.mode === "simple" ? "#6c757d" : "#b300ff" }}
+                >
+                  {session.mode === "simple" ? "Simple" : "Detailed"}
+                </span>
+
+                {session.mode !== "simple" && (
+                  <div>
+                    <strong>Score:</strong> {session.score ?? "N/A"}
+                  </div>
+                )}
+
+                <div style={{ fontSize: "22px" }}>
+                  {!session.starsAwarded ? (
+                    <span style={{ color: "#ccc" }}>No stars</span>
+                  ) : (
+                    <span style={{ color: "#f5b800" }}>
+                      {session.starsAwarded <= 5
+                        ? "⭐".repeat(session.starsAwarded)
+                        : `⭐ ${session.starsAwarded}`}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {session.mode === "simple" ? (
+                <div className="small mb-2" style={{ whiteSpace: "pre-wrap" }}>
+                  {session.notes || session.overall?.summary || "No feedback text"}
+                </div>
+              ) : (
+                <>
+                  {/* ⭐ Summary */}
+                  <div className="small mb-2">
+                    <strong>Summary:</strong>{" "}
+                    {session.overall?.summary || "No summary"}
+                  </div>
+
+                  {/* ⭐ Overall Ratings */}
+                  <div className="small d-flex gap-3">
+                    <div><strong>Effort:</strong> {session.overall?.effort}</div>
+                    <div><strong>Listening:</strong> {session.overall?.listening}</div>
+                    <div><strong>Behaviour:</strong> {session.overall?.behaviour}</div>
+                  </div>
+
+                  {/* ⭐ Entries */}
+                  <div className="mt-3">
+                    <strong>Entries:</strong>
+                    <ul className="small mt-2">
+                      {(session.entries || []).map(e => (
+                        <li key={e.id}>
+                          <strong>{e.name}</strong> — {e.rating}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* ⭐ RIGHT SIDE BUTTONS */}
+            <div className="d-flex flex-row flex-md-column gap-2 text-center">
+              <button
+                className="btn btn-sm btn-danger"
+                style={{ borderRadius: "10px", fontWeight: 600 }}
+                onClick={() => setDeleteConfirm(session.id)}
+              >
+                Remove
+              </button>
+            </div>
+
+          </div>
         </div>
-      </div>
+      ))}
     </div>
-
-    {/* ⭐ RIGHT SIDE BUTTONS (centered on mobile, vertical on desktop) */}
-    <div
-      className="
-        d-flex 
-        flex-row flex-md-column 
-        gap-2 
-        mt-3 mt-md-0 
-        justify-content-center justify-content-md-end
-        text-center
-      "
-    >
-      <button
-        className="btn btn-sm"
-        style={{
-          backgroundColor: "white",
-          border: "1px solid #dcdcdc",
-          borderRadius: "10px",
-          fontWeight: 600,
-          color: "#1f2a44"
-        }}
-        onClick={() => setEditingSession(session)}
-      >
-        Edit
-      </button>
-
-      <button
-        className="btn btn-sm btn-danger"
-        style={{ borderRadius: "10px", fontWeight: 600 }}
-        onClick={() => setDeleteConfirm(session.id)}
-      >
-        Remove
-      </button>
-    </div>
-
-  </div>
-</div>
-
-
-
-
-        );
-      })}
-    </div>
-
-    {/* ⭐ Edit Modal */}
-    {editingSession && (
-      <div
-        className="p-4 mt-4"
-        style={{
-          borderRadius: "16px",
-          border: "1px solid #e6e6e6",
-          backgroundColor: "#ffffff"
-        }}
-      >
-        <h3 className="h4 mb-3" style={{ color: "#1f2a44", fontWeight: 600 }}>
-          Edit Session
-        </h3>
-
-        <label className="form-label" style={{ color: "#1f2a44" }}>
-          Notes
-        </label>
-        <textarea
-          className="form-control mb-3"
-          value={editingSession.notes}
-          onChange={e =>
-            setEditingSession({ ...editingSession, notes: e.target.value })
-          }
-          style={{ borderRadius: "12px", minHeight: "120px" }}
-        />
-
-        <label className="form-label" style={{ color: "#1f2a44" }}>
-          Score
-        </label>
-        <input
-          type="number"
-          className="form-control mb-3"
-          value={editingSession.score}
-          onChange={e =>
-            setEditingSession({
-              ...editingSession,
-              score: Number(e.target.value)
-            })
-          }
-          style={{ borderRadius: "12px" }}
-        />
-
-        <div className="d-flex justify-content-end gap-2">
-          <button
-            className="btn"
-            style={{
-              backgroundColor: "#b300ff",
-              color: "white",
-              fontWeight: 600,
-              borderRadius: "10px",
-              padding: "6px 14px"
-            }}
-            onClick={() => saveEditedSession(editingSession)}
-          >
-            Save
-          </button>
-
-          <button
-            className="btn btn-light"
-            style={{
-              borderRadius: "10px",
-              border: "1px solid #dcdcdc",
-              fontWeight: 600
-            }}
-            onClick={() => setEditingSession(null)}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    )}
 
     {/* ⭐ Delete Confirmation */}
-    {deleteConfirm && (
-      <div
-        className="p-4 mt-4"
-        style={{
-          borderRadius: "16px",
-          border: "1px solid #e6e6e6",
-          backgroundColor: "#ffffff"
-        }}
+{deleteConfirm && (
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100vw",
+      height: "100vh",
+      background: "rgba(0,0,0,0.4)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 9999
+    }}
+  >
+    <div
+      style={{
+        background: "white",
+        borderRadius: "16px",
+        border: "1px solid #e6e6e6",
+        padding: "24px",
+        width: "90%",
+        maxWidth: "420px",
+        textAlign: "center"
+      }}
+    >
+      <h3
+        className="h4 mb-3"
+        style={{ color: "#1f2a44", fontWeight: 600 }}
       >
-        <h3 className="h4 mb-3" style={{ color: "#1f2a44", fontWeight: 600 }}>
-          Remove Session
-        </h3>
+        Remove Session
+      </h3>
 
-        <p style={{ color: "#1f2a44" }}>
-          Are you sure you want to remove this session?
-        </p>
+      <p style={{ color: "#1f2a44", marginBottom: "20px" }}>
+        Are you sure you want to remove this session?
+      </p>
 
-        <div className="d-flex justify-content-end gap-2">
-          <button
-            className="btn btn-danger"
-            style={{
-              borderRadius: "10px",
-              fontWeight: 600,
-              padding: "6px 14px"
-            }}
-            onClick={() => deleteSession(deleteConfirm)}
-          >
-            Remove
-          </button>
+      <div className="d-flex justify-content-center gap-3">
+        <button
+          className="btn"
+          style={{
+            backgroundColor: "#b300ff",
+            color: "white",
+            fontWeight: 600,
+            borderRadius: "10px",
+            padding: "8px 18px"
+          }}
+          onClick={() => {
+            removeSession(deleteConfirm);
+            setDeleteConfirm(null);
+          }}
+        >
+          Confirm
+        </button>
 
-          <button
-            className="btn btn-light"
-            style={{
-              borderRadius: "10px",
-              border: "1px solid #dcdcdc",
-              fontWeight: 600
-            }}
-            onClick={() => setDeleteConfirm(null)}
-          >
-            Cancel
-          </button>
-        </div>
+        <button
+          className="btn"
+          style={{
+            backgroundColor: "white",
+            border: "1px solid #dcdcdc",
+            color: "#1f2a44",
+            fontWeight: 600,
+            borderRadius: "10px",
+            padding: "8px 18px"
+          }}
+          onClick={() => setDeleteConfirm(null)}
+        >
+          Cancel
+        </button>
       </div>
-    )}
+    </div>
+  </div>
+)}
+
 
   </div>
 );
-
-
-
 
 }

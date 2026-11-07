@@ -5,7 +5,7 @@ export default function SportsApparatus() {
   const { id } = useParams();
   const sports = useAppStore(s => s.sportsClasses);
 
-  const sport = sports.find(s => s.id === id);
+  const sport = sports.find(s => s.templateId === id);
 
   if (!sport) {
     return (
@@ -39,7 +39,7 @@ export default function SportsApparatus() {
           <span style={{ color: "#1f2a44", margin: "0 6px" }}>›</span>
 
           <Link
-            to={`/sports/${sport.id}`}
+            to={`/sports/${sport.templateId}`}
             style={{
               color: "#b300ff",
               textDecoration: "none"

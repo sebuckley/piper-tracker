@@ -1,18 +1,18 @@
 import { nanoid } from "nanoid";
+import { API_BASE } from "../../config/api";
+import { POCKET_MONEY_REWARD_ID, pocketMoneyReward } from "../../data/rewardsData";
 
 // ---------------------------------------------------------
-// REWARDS + STARS SLICE — FULLY NORMALIZED + PERSIST-SAFE
+// REWARDS + STARS SLICE — FULLY NORMALIZED + AUDIT TRAIL
 // ---------------------------------------------------------
 export const createRewardsSlice = (set, get) => ({
-  // ⭐ Default rewards now include repeatable
-  rewards: [
-    { id: nanoid(), name: "Movie Night", category: "Treat", cost: 10, redeemed: false, repeatable: false },
-    { id: nanoid(), name: "Trip to the Park", category: "Activity", cost: 15, redeemed: false, repeatable: false },
-    { id: nanoid(), name: "Choose Dinner", category: "Privilege", cost: 20, redeemed: false, repeatable: false }
-  ],
+
+  // ⭐ Default rewards
+  rewards: [pocketMoneyReward],
 
   starBalance: 0,
   rewardLogs: [],
+  rewardRequests: [],   // ⭐ NEW — pending requests
 
   // ⭐ Normalize reward
   _normalizeReward(r) {
@@ -20,9 +20,16 @@ export const createRewardsSlice = (set, get) => ({
       id: r.id ?? nanoid(),
       name: r.name ?? "",
       category: r.category ?? "",
+      emoji: r.emoji ?? "",
       cost: Number(r.cost ?? 0),
+      ...(r.type ? { type: r.type } : {}),
+      ...(r.templateId ? { templateId: r.templateId } : {}),
+      ...(r.type === "pocketMoney" ? { amount: Number(r.amount ?? 1) } : {}),
       redeemed: Boolean(r.redeemed),
-      repeatable: Boolean(r.repeatable)
+      repeatable: Boolean(r.repeatable),
+      confirmedBy: r.confirmedBy ?? null,
+      confirmedAt: r.confirmedAt ?? null,
+      confirmedDeviceId: r.confirmedDeviceId ?? null
     };
   },
 
@@ -32,10 +39,16 @@ export const createRewardsSlice = (set, get) => ({
       id: log.id ?? nanoid(),
       rewardId: log.rewardId ?? "",
       name: log.name ?? "",
+      type: "reward",
+      category: log.category ?? "",
+      emoji: log.emoji ?? "",
       cost: Number(log.cost ?? 0),
       date: log.date ?? new Date().toISOString(),
       repeatable: Boolean(log.repeatable),
-      remainingStars: Number(log.remainingStars ?? 0)
+      remainingStars: Number(log.remainingStars ?? 0),
+      confirmedBy: log.confirmedBy ?? null,
+      confirmedAt: log.confirmedAt ?? null,
+      confirmedDeviceId: log.confirmedDeviceId ?? null
     };
   },
 
@@ -52,59 +65,180 @@ export const createRewardsSlice = (set, get) => ({
     get().saveToKV(childId);
   },
 
-  // ⭐ Redeem reward
-  redeemReward: (rewardId) => {
-    const childId = get().activeChild;
-    if (!childId) return;
+  // ---------------------------------------------------------
+  // ⭐ REQUEST REWARD (viewer/editor)
+  // ---------------------------------------------------------
+  requestReward: (rewardId, options = {}) => {
+    const { rewards, rewardRequests } = get();
+    const user = get().user;
+    const deviceId = get().deviceId;
 
-    set(state => {
-      const reward = state.rewards.find(r => r.id === rewardId);
-      if (!reward) return state;
+    const reward = rewards.find(r => r.id === rewardId);
+    if (!reward) return;
 
-      const current = Number(state.starBalance);
-      const cost = Number(reward.cost);
+    let cost = reward.cost;
+    let amount;
+    if (reward.type === "pocketMoney") {
+      const unit = Number(reward.amount) || 1;
+      amount = Number(options.amount ?? unit);
+      cost = Math.ceil((amount * Number(reward.cost)) / unit);
+    }
 
-      if (current < cost) return state; // not enough stars
+    const newReq = {
+      id: rewardId,
+      name: reward.name,
+      category: reward.category,
+      emoji: reward.emoji,
+      cost,
+      ...(amount !== undefined ? { amount } : {}),
+      requestedBy: user?.email ?? "unknown",
+      requestedAt: Date.now(),
+      requestedDeviceId: deviceId ?? null
+    };
 
-      const newBalance = current - cost;
-
-      return {
-        rewards: state.rewards.map(r =>
-          r.id === rewardId
-            ? {
-                ...r,
-                redeemed: r.repeatable ? !r.redeemed : true
-              }
-            : r
-        ),
-
-        starBalance: newBalance,
-
-        rewardLogs: [
-          get()._normalizeRewardLog({
-            rewardId,
-            name: reward.name,
-            cost,
-            repeatable: reward.repeatable,
-            remainingStars: newBalance
-          }),
-          ...state.rewardLogs
-        ]
-      };
+    set({
+      rewardRequests: [...rewardRequests, newReq]
     });
-
-    get().saveToKV(childId);
   },
 
+  // ---------------------------------------------------------
+  // ⭐ DENY REWARD REQUEST (owner only)
+  // ---------------------------------------------------------
+  denyRewardRequest: (rewardId) => {
+    const { rewardRequests } = get();
+    const user = get().user;
+    const deviceId = get().deviceId;
+
+    const updatedRequests = rewardRequests.map(req =>
+      req.id === rewardId
+        ? {
+            ...req,
+            deniedBy: user?.email ?? "unknown",
+            deniedAt: Date.now(),
+            deniedDeviceId: deviceId ?? null
+          }
+        : req
+    );
+
+    set({
+      rewardRequests: updatedRequests.filter(r => r.id !== rewardId)
+    });
+  },
+
+  // ---------------------------------------------------------
+  // ⭐ Accounts a pocket money reward can be paid into (current accounts only)
+  // ---------------------------------------------------------
+  getPocketMoneyAccounts: () =>
+    Object.values(get().bankAccounts ?? {}).filter(a => a.type === "current"),
+
+  // ---------------------------------------------------------
+  // ⭐ APPROVE REWARD (owner only)
+  // options.accountId is required for pocket money rewards
+  // ---------------------------------------------------------
+  redeemReward: (rewardId, options = {}) => {
+    const { rewards, rewardRequests, starBalance } = get();
+    const user = get().user;
+    const deviceId = get().deviceId;
+    const childId = get().activeChild;
+    if (!childId) return { ok: false };
+
+    const reward = rewards.find(r => r.id === rewardId);
+    if (!reward) return { ok: false };
+
+    const isPocketMoney = reward.type === "pocketMoney";
+    let cost = Number(reward.cost);
+    let money = 0;
+
+    // Pocket money: reward.cost stars buy reward.amount, so any amount can be priced
+    if (isPocketMoney) {
+      const unit = Number(reward.amount) || 1;
+      money = Number(options.amount ?? unit);
+      if (!(money > 0)) return { ok: false, error: "Choose an amount" };
+      cost = Math.ceil((money * Number(reward.cost)) / unit);
+    }
+
+    const current = Number(starBalance);
+    if (current < cost) return { ok: false, error: "Not enough stars" };
+
+    let accountId = null;
+
+    if (isPocketMoney) {
+      const eligible = get().getPocketMoneyAccounts();
+      accountId = options.accountId;
+
+      if (eligible.length === 0) return { ok: false, error: "Set up a current account first" };
+      if (!eligible.some(a => a.id === accountId)) {
+        return { ok: false, error: "Choose a current account" };
+      }
+    }
+
+    const newBalance = current - cost;
+
+    // Remove pending request if exists
+    const updatedRequests = rewardRequests.filter(r => r.id !== rewardId);
+
+    // Update reward with audit metadata
+    const updatedRewards = rewards.map(r =>
+      r.id === rewardId
+        ? {
+            ...r,
+            redeemed: true,
+            confirmedBy: user?.email ?? "unknown",
+            confirmedAt: Date.now(),
+            confirmedDeviceId: deviceId ?? null
+          }
+        : r
+    );
+
+    // ⭐ Add reward log with FULL reward details
+    const newLog = get()._normalizeRewardLog({
+      rewardId,
+      name: isPocketMoney ? `${reward.name} (${money.toFixed(2)})` : reward.name,
+      type: "reward",
+      category: reward.category,
+      emoji: reward.emoji,
+      cost,
+      repeatable: reward.repeatable,
+      remainingStars: newBalance,
+      confirmedBy: user?.email ?? "unknown",
+      confirmedAt: Date.now(),
+      confirmedDeviceId: deviceId ?? null
+    });
+
+    set({
+      rewards: updatedRewards,
+      rewardRequests: updatedRequests,
+      rewardLogs: [newLog, ...get().rewardLogs],
+      starBalance: newBalance
+    });
+
+    if (isPocketMoney) {
+      // addCredit also persists the child's state
+      get().addCredit(accountId, money, `Pocket money (${cost} stars)`);
+    } else {
+      get().saveToKV(childId);
+    }
+
+    return { ok: true };
+  },
+
+  // ---------------------------------------------------------
   // ⭐ Add reward
-  addReward: (name, category, cost, repeatable) => {
+  // ---------------------------------------------------------
+  addReward: (name, category, cost, repeatable, emoji, options = {}) => {
     const childId = get().activeChild;
     if (!childId) return;
 
+    // templateId is the stable id shared across users (the global reward's id)
+    const templateId = options.templateId ?? nanoid();
+
     const newReward = get()._normalizeReward({
+      ...(options.type === "pocketMoney" ? { id: POCKET_MONEY_REWARD_ID, type: "pocketMoney", amount: options.amount } : {}),
       name,
       category,
+      emoji,
       cost,
+      templateId,
       redeemed: false,
       repeatable
     });
@@ -114,9 +248,32 @@ export const createRewardsSlice = (set, get) => ({
     });
 
     get().saveToKV(childId);
+
+    // Rewards picked from the global list are already approved
+    if (!options.fromGlobal) {
+      fetch(`${API_BASE}/api/submit/reward`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reward: {
+            templateId,
+            name: newReward.name,
+            category: newReward.category,
+            emoji: newReward.emoji,
+            cost: newReward.cost,
+            repeatable: newReward.repeatable
+          },
+          submittedBy: get().user?.email ?? "unknown",
+          submittedAt: Date.now(),
+          submittedDeviceId: get().deviceId ?? null
+        })
+      }).catch(err => console.error("Reward submit failed:", err));
+    }
   },
 
+  // ---------------------------------------------------------
   // ⭐ Update reward
+  // ---------------------------------------------------------
   updateReward: (rewardId, updates) => {
     const childId = get().activeChild;
     if (!childId) return;
@@ -132,7 +289,9 @@ export const createRewardsSlice = (set, get) => ({
     get().saveToKV(childId);
   },
 
+  // ---------------------------------------------------------
   // ⭐ Delete reward
+  // ---------------------------------------------------------
   deleteReward: (rewardId) => {
     const childId = get().activeChild;
     if (!childId) return;

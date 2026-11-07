@@ -8,8 +8,40 @@ workers_dev = true
 binding = "TRACKER_DATA"
 id = "ee90e158ae5d4b73b655a9a58c851258"
 
+[[kv_namespaces]]
+binding = "GLOBAL_TEMPLATES"
+id = "6938d7a5315d41d3a487641e33c45249"
+
+[[kv_namespaces]]
+binding = "GLOBAL_CLUBS"
+id = "09cd2c49d88e4ba0b4d0da27f44c96aa"
+
+[[kv_namespaces]]
+binding = "GLOBAL_SUBMISSIONS"
+id = "29398c42397b486592db2f85788d7ecd"
+
+[[kv_namespaces]]
+binding = "GLOBAL_REWARDS"
+id = "095212ae1e6349f0aaa7b8e75d0048c7"
+
 # Development KV (env.dev)
 [env.dev]
 [[env.dev.kv_namespaces]]
 binding = "TRACKER_DATA"
 id = "dev_namespace_id"
+
+[[env.dev.kv_namespaces]]
+binding = "GLOBAL_TEMPLATES"
+id = "dev_global_templates_id"
+
+[[env.dev.kv_namespaces]]
+binding = "GLOBAL_CLUBS"
+id = "dev_global_clubs_id"
+
+[[env.dev.kv_namespaces]]
+binding = "GLOBAL_SUBMISSIONS"
+id = "your_dev_submissions_kv_id"
+
+[[env.dev.kv_namespaces]]
+binding = "GLOBAL_REWARDS"
+id = "your_dev_global_rewards_id"

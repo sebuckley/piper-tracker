@@ -1,38 +1,86 @@
 import { useState, useEffect } from "react";
-import { useAuthStore } from "../store/authStore";
-import { useAppStore } from "../store/useAppStore";
+import { useAppStore } from "@/store/useAppStore";
 
 export default function Login() {
-  const { login, error, user, init } = useAuthStore();
+  // Unified auth slice
+  const login = useAppStore(s => s.login);
+  const error = useAppStore(s => s.authError);
+  const user = useAppStore(s => s.user);
+  const initAuth = useAppStore(s => s.initAuth);
+
+  // Unified device slice
+  const initDevice = useAppStore(s => s.initDevice);
+  const refreshDeviceRecord = useAppStore(s => s.refreshDeviceRecord);
+
+  // Unified user + family + children slices
+  const loadUserIdentity = useAppStore(s => s.loadUserIdentity);
+  const loadFamilyGroup = useAppStore(s => s.loadFamilyGroup);
+  const loadChildrenFromFamilyGroup = useAppStore(s => s.loadChildrenFromFamilyGroup);
+  const loadDevicesFromFamilyGroup = useAppStore(s => s.loadDevicesFromFamilyGroup);
+  const loadInvites = useAppStore(s => s.loadInvites);
+
+  // Unified KV slice
+  const loadFromKV = useAppStore(s => s.loadFromKV);
+  const activeChild = useAppStore(s => s.activeChild);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const loadUserFromKV = useAppStore(state => state.loadUserFromKV);
-  const loadFromKV = useAppStore(state => state.loadFromKV);
-  const activeChild = useAppStore(state => state.activeChild);
-
-  // Initialise Firebase Auth
+  // ---------------------------------------------------------
+  // INIT DEVICE + AUTH LISTENER
+  // ---------------------------------------------------------
   useEffect(() => {
-    init();
+    initDevice();
+    initAuth();
   }, []);
 
-  // When user logs in → load user profile + children from KV
+  // ---------------------------------------------------------
+  // LOGIN SIDE EFFECTS (Firestore + KV)
+  // ---------------------------------------------------------
   useEffect(() => {
     if (!user) return;
 
     const uid = user.uid;
 
-    // Load user profile + children + activeChild
-    loadUserFromKV(uid);
+    (async () => {
+      // 1. Load user identity (Firestore)
+      await loadUserIdentity(uid);
+
+      // 2. Load family group (Firestore)
+      await loadFamilyGroup(uid);
+
+      // 3. Load children (Firestore)
+      await loadChildrenFromFamilyGroup();
+
+      // 4. Load devices (Firestore)
+      await loadDevicesFromFamilyGroup();
+
+      // 5. Load invites (Firestore)
+      await loadInvites(uid);
+
+      // 6. Refresh device record
+      await refreshDeviceRecord(uid);
+
+      // 7. Load KV tracker state (if active child exists)
+      const childId = useAppStore.getState().activeChild;
+      if (childId) {
+        await loadFromKV(childId);
+      }
+    })();
   }, [user]);
 
-  // When activeChild changes → load tracker state for that child
+  // ---------------------------------------------------------
+  // LOAD TRACKER STATE WHEN activeChild CHANGES
+  // ---------------------------------------------------------
   useEffect(() => {
     if (activeChild) {
       loadFromKV(activeChild);
     }
   }, [activeChild]);
 
+  // ---------------------------------------------------------
+  // UI
+  // ---------------------------------------------------------
   if (user) {
     return <div className="p-4">You are logged in.</div>;
   }

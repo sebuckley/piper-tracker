@@ -1,0 +1,254 @@
+export const gymnasticsTemplates = [
+  {
+    id: "gymnastics",
+    name: "Gymnastics",
+    classSessions: [],
+
+    // ⭐ Levels
+    levels: [
+      { id: "gym_core_1", value: 1, label: "Core 1" },
+      { id: "gym_core_2", value: 2, label: "Core 2" },
+      { id: "gym_core_3", value: 3, label: "Core 3" },
+      { id: "gym_core_4", value: 4, label: "Core 4" },
+      { id: "gym_core_5", value: 5, label: "Core 5" },
+      { id: "gym_core_6", value: 6, label: "Core 6" },
+      { id: "gym_core_7", value: 7, label: "Core 7" },
+      { id: "gym_core_8", value: 8, label: "Core 8" },
+      { id: "gym_core_9", value: 9, label: "Core 9" },
+      { id: "gym_core_10", value: 10, label: "Core 10" },
+      { id: "gym_bronze", value: 11, label: "Bronze" },
+      { id: "gym_silver", value: 12, label: "Silver" },
+      { id: "gym_gold", value: 13, label: "Gold" }
+    ],
+
+    // ⭐ NEW — Routine validation rules
+    routineRules: {
+      1: { min: 5, max: 8 },   // Core 1
+      2: { min: 5, max: 8 },   // Core 2
+      3: { min: 6, max: 9 },   // Core 3
+      4: { min: 6, max: 10 },  // Core 4
+      5: { min: 7, max: 10 },  // Core 5
+      6: { min: 7, max: 11 },  // Core 6
+      7: { min: 8, max: 11 },  // Core 7
+      8: { min: 8, max: 12 },  // Core 8
+      9: { min: 9, max: 12 },  // Core 9
+      10: { min: 10, max: 12 }, // Core 10
+      11: { min: 10, max: 12 }, // Bronze
+      12: { min: 10, max: 12 }, // Silver
+      13: { min: 10, max: 12 }  // Gold
+    },
+
+    uiLabels: {
+      routineName: "Routine",
+      routinePlural: "Routines",
+      categoryName: "Apparatus",
+      categoryPlural: "Apparatus"
+    },
+
+    categories: [
+      // ⭐ BARS
+      {
+        id: "gym_bars",
+        name: "Bars",
+        description: "Progression of bar skills focusing on strength, control and rotation.",
+        routines: [],
+        routineRules: {
+          min: 4,
+          max: 6
+        },
+        skills: [
+          { id: "bars_support_hold", name: "Support Hold", level: 1, description: "Maintain a strong front support position.", link: "" },
+          { id: "bars_cast_horizontal", name: "Cast to Horizontal", level: 1, description: "Small cast reaching horizontal body line.", link: "" },
+          { id: "bars_swing_regrip", name: "Swing to Regrip", level: 1, description: "Basic swing with secure regrip on bar.", link: "" },
+          { id: "bars_chinup_pullover", name: "Chin‑Up Pullover", level: 1, description: "Pull chin above bar and rotate to front support.", link: "" },
+          { id: "bars_forward_roll_dismount", name: "Forward Roll Dismount", level: 1, description: "Forward roll off the bar from front support.", link: "" },
+          { id: "bars_long_hang_swing_1", name: "Long Hang Swing", level: 1, description: "Swing in long hang with straight body.", link: "" },
+
+          { id: "bars_back_hip_circle", name: "Back Hip Circle", level: 2, description: "Controlled backward circle around the bar.", link: "" },
+          { id: "bars_forward_hip_circle", name: "Forward Hip Circle", level: 2, description: "Forward rotation maintaining tight body shape.", link: "" },
+          { id: "bars_cast_45", name: "Cast to 45°", level: 2, description: "Higher cast with improved shoulder extension.", link: "" },
+          { id: "bars_tap_swing_2", name: "Tap Swing", level: 2, description: "Swing with tap action to generate momentum.", link: "" },
+
+          { id: "bars_squat_on", name: "Squat On", level: 3, description: "Jump feet to bar and stand ready for transition.", link: "" },
+          { id: "bars_long_hang_swing_3", name: "Long Hang Swing", level: 3, description: "Controlled swings with straight body line.", link: "" },
+          { id: "bars_tap_swing_3", name: "Tap Swing", level: 3, description: "Introduce tap action for future giants.", link: "" },
+
+          { id: "bars_straddle_on", name: "Straddle On", level: 4, description: "Straddle jump to bar with control.", link: "" },
+          { id: "bars_clear_hip_circle", name: "Clear Hip Circle", level: 4, description: "Hip circle away from bar with extended body.", link: "" },
+          { id: "bars_flyaway", name: "Flyaway", level: 4, description: "Swing release and backward salto dismount.", link: "" }
+        ]
+      },
+
+      // ⭐ BEAM
+      {
+        id: "gym_beam",
+        name: "Beam",
+        description: "Balance, control and precision on a narrow surface.",
+        routines: [
+          {
+            id: "beam_routine_beginner",
+            name: "Beginner Beam Routine",
+            level: 1,
+            skills: [
+              "Relevé Walk",
+              "Straddle Sit",
+              "Arabesque Lean",
+              "Passé Balance",
+              "Straight Jump",
+              "Tendu Below Beam",
+              "Relevé Knee Bend",
+              "Straight Jump Dismount"
+            ]
+          }
+        ],
+        routineRules: {
+          min: 6,
+          max: 10
+        },
+        skills: [
+          { id: "beam_mount", name: "Mount", level: 1, description: "Basic mount onto the beam safely.", link: "" },
+          { id: "beam_straight_jump", name: "Straight Jump", level: 1, description: "Small straight jump maintaining balance.", link: "" },
+          { id: "beam_arabesque_hold", name: "Arabesque Hold", level: 1, description: "Balance on one leg with extended back leg.", link: "" },
+          { id: "beam_releve_walk", name: "Relevé Walk", level: 1, description: "Tiptoe walk along the beam.", link: "" },
+          { id: "beam_straddle_sit", name: "Straddle Sit", level: 1, description: "Controlled straddle position on the beam.", link: "" },
+          { id: "beam_arabesque_lean", name: "Arabesque Lean", level: 1, description: "Forward lean in arabesque position.", link: "" },
+          { id: "beam_passe_balance", name: "Passé Balance", level: 1, description: "Balance on one leg with the other in passé.", link: "" },
+          { id: "beam_tendu_below", name: "Tendu Below Beam", level: 1, description: "Extend foot downward in tendu position.", link: "" },
+          { id: "beam_releve_knee_bend", name: "Relevé Knee Bend", level: 1, description: "Controlled knee bend while in relevé.", link: "" },
+          { id: "beam_straight_jump_dismount", name: "Straight Jump Dismount", level: 1, description: "Straight jump dismount with controlled landing.", link: "" },
+
+          { id: "beam_tuck_jump", name: "Tuck Jump", level: 2, description: "Controlled tuck jump on beam.", link: "" },
+          { id: "beam_pivot_turn", name: "Pivot Turn", level: 2, description: "Half turn maintaining tight posture.", link: "" },
+          { id: "beam_side_step_sequence", name: "Side Step Sequence", level: 2, description: "Linked skills demonstrating control.", link: "" },
+
+          { id: "beam_split_jump", name: "Split Jump", level: 3, description: "Split jump with extended legs.", link: "" },
+          { id: "beam_cartwheel", name: "Cartwheel", level: 3, description: "Controlled cartwheel along beam line.", link: "" },
+          { id: "beam_full_turn", name: "Full Turn", level: 3, description: "360° turn with balance and posture.", link: "" },
+
+          { id: "beam_back_walkover", name: "Back Walkover", level: 4, description: "Smooth walkover maintaining alignment.", link: "" },
+          { id: "beam_front_handspring_dismount", name: "Front Handspring Dismount", level: 4, description: "Powerful handspring off beam.", link: "" },
+          { id: "beam_series_connection", name: "Series Connection", level: 4, description: "Linked acrobatic elements.", link: "" }
+        ]
+      },
+
+      // ⭐ FLOOR
+      {
+        id: "gym_floor",
+        name: "Floor",
+        description: "Acrobatic and dance elements performed on a sprung floor.",
+        routines: [
+          {
+            id: "floor_routine_beginner",
+            name: "Beginner Floor Routine",
+            level: 1,
+            skills: [
+              "Forward Roll to Stand",
+              "Pike Forward Roll",
+              "Backward Roll to Stand",
+              "Front Scale",
+              "Headstand",
+              "Straight Jump"
+            ]
+          }
+        ],
+        routineRules: {
+          min: 8,
+          max: 12
+        },
+        skills: [
+          { id: "floor_forward_roll", name: "Forward Roll", level: 1, description: "Basic roll maintaining tight shape.", link: "" },
+          { id: "floor_handstand", name: "Handstand", level: 1, description: "Hold handstand for 2–3 seconds.", link: "" },
+          { id: "floor_cartwheel", name: "Cartwheel", level: 1, description: "Controlled cartwheel with straight legs.", link: "" },
+          { id: "floor_close_legs_roll", name: "Close Legs Roll Back and Up", level: 1, description: "Backward roll finishing upright.", link: "" },
+          { id: "floor_one_leg_forward_hold", name: "One Leg Forward Hold", level: 1, description: "Balance on one leg with the other extended forward.", link: "" },
+          { id: "floor_forward_roll_stand", name: "Forward Roll to Stand", level: 1, description: "Forward roll finishing upright.", link: "" },
+          { id: "floor_pike_forward_roll", name: "Pike Forward Roll", level: 1, description: "Forward roll in pike shape.", link: "" },
+          { id: "floor_backward_roll_stand", name: "Backward Roll to Stand", level: 1, description: "Backward roll finishing upright.", link: "" },
+          { id: "floor_front_scale", name: "Front Scale", level: 1, description: "Balance on one leg with the other extended forward.", link: "" },
+          { id: "floor_headstand", name: "Headstand", level: 1, description: "Hold a stable headstand.", link: "" },
+          { id: "floor_straight_jump", name: "Straight Jump", level: 1, description: "Vertical jump with straight alignment.", link: "" },
+
+          { id: "floor_roundoff", name: "Roundoff", level: 2, description: "Powerful roundoff with rebound.", link: "" },
+          { id: "floor_bridge_kickover", name: "Bridge Kickover", level: 2, description: "Kickover from bridge position.", link: "" },
+          { id: "floor_split_leap", name: "Split Leap", level: 2, description: "Leap with extended split.", link: "" },
+          { id: "floor_headstand_adv", name: "Headstand (Advanced)", level: 2, description: "Hold headstand for 2–3 seconds.", link: "" },
+
+          { id: "floor_back_handspring", name: "Back Handspring", level: 3, description: "Powerful backward handspring.", link: "" },
+          { id: "floor_front_handspring", name: "Front Handspring", level: 3, description: "Forward handspring with control.", link: "" },
+          { id: "floor_aerial_cartwheel", name: "Aerial Cartwheel", level: 3, description: "Cartwheel performed without hands.", link: "" },
+
+          { id: "floor_back_tuck", name: "Back Tuck", level: 4, description: "Backward salto in tuck position.", link: "" },
+          { id: "floor_front_layout", name: "Front Layout", level: 4, description: "Straight‑body forward salto.", link: "" },
+          { id: "floor_twisting_skills", name: "Twisting Skills", level: 4, description: "Half and full twists added to saltos.", link: "" }
+        ]
+      },
+
+      // ⭐ VAULT
+      {
+        id: "gym_vault",
+        name: "Vault",
+        description: "Power, speed and controlled landings.",
+        routines: [
+          {
+            id: "vault_straight_jump",
+            name: "Vault – Straight Jump",
+            level: 1,
+            skills: [
+              "Approach Run",
+              "Springboard Jump",
+              "Straight Jump Off",
+              "Landing Position (Finish)"
+            ]
+          },
+          {
+            id: "vault_star_jump",
+            name: "Vault – Star Jump",
+            level: 1,
+            skills: [
+              "Approach Run",
+              "Springboard Jump",
+              "Star Jump Off",
+              "Landing Position (Finish)"
+            ]
+          },
+          {
+            id: "vault_pike_jump",
+            name: "Vault – Pike Jump",
+            level: 1,
+            skills: [
+              "Approach Run",
+              "Springboard Jump",
+              "Pike Jump Off",
+              "Landing Position (Finish)"
+            ]
+          }
+        ],
+        routineRules: {
+          min: 2,
+          max: 3
+        },
+        skills: [
+          { id: "vault_handstand_prep", name: "Handstand Prep", level: 1, description: "Hand placement and body tension.", link: "" },
+          { id: "vault_approach_run", name: "Approach Run", level: 1, description: "Controlled run toward the springboard.", link: "" },
+          { id: "vault_springboard_jump", name: "Springboard Jump", level: 1, description: "Jump from springboard with straight alignment.", link: "" },
+          { id: "vault_straight_jump_off", name: "Straight Jump Off", level: 1, description: "Vertical straight jump off vault.", link: "" },
+          { id: "vault_star_jump_off", name: "Star Jump Off", level: 1, description: "Jump with arms and legs extended.", link: "" },
+          { id: "vault_pike_jump_off", name: "Pike Jump Off", level: 1, description: "Jump maintaining pike position.", link: "" },
+          { id: "vault_landing_finish", name: "Landing Position (Finish)", level: 1, description: "Controlled landing with knees bent.", link: "" },
+
+          { id: "vault_handstand_flatback", name: "Handstand Flatback", level: 2, description: "Handstand entry landing flat on mat.", link: "" },
+          { id: "vault_squat_through", name: "Squat Through", level: 2, description: "Squat through vault with control.", link: "" },
+          { id: "vault_straddle_over", name: "Straddle Over", level: 2, description: "Straddle vault with extended legs.", link: "" },
+
+          { id: "vault_handspring", name: "Handsprint Vault", level: 3, description: "Powerful handspring over vault.", link: "" },
+          { id: "vault_half_on", name: "Half‑On Vault", level: 3, description: "Half‑turn entry onto vault.", link: "" },
+          { id: "vault_front_handspring", name: "Front Handspring Vault", level: 3, description: "Full handspring vault with landing.", link: "" },
+
+          { id: "vault_tsukahara_prep", name: "Tsukahara Prep", level: 4, description: "Quarter‑on, back salto preparation.", link: "" },
+          { id: "vault_yurchenko_prep", name: "Yurchenko Prep", level: 4, description: "Roundoff entry onto springboard.", link: "" },
+          { id: "vault_advanced", name: "Advanced Vaults", level: 4, description: "Twisting and salto vault variations.", link: "" }
+        ]
+      }
+    ]
+  }
+];

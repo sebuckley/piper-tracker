@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { DEFAULT_UI_LABELS } from "../../utils/DEFAULT_LABELS";
 
 export default function CategoryHeader({
   sport,
@@ -10,50 +11,51 @@ export default function CategoryHeader({
   const [name, setName] = useState(category.name);
   const [description, setDescription] = useState(category.description || "");
 
-  // ⭐ SINGLE SOURCE OF TRUTH
-  const [levels, setLevels] = useState(category.levels || []);
-
-  const addLevel = () => {
-    setLevels([...levels, `Level ${levels.length + 1}`]);
-  };
-
-  const updateLevelName = (index, value) => {
-    const updated = [...levels];
-    updated[index] = value;
-    setLevels(updated);
-  };
-
-  const removeLevel = index => {
-    const updated = levels.filter((_, i) => i !== index);
-    setLevels(updated);
-  };
+  // ⭐ Sync when switching categories
+  useEffect(() => {
+    setName(category.name);
+    setDescription(category.description || "");
+  }, [category.id]);
 
   const save = () => {
     updateCategory(sport.id, category.id, {
       name: name.trim(),
-      description: description.trim(),
-      levels
+      description: description.trim()
+      // ⭐ Levels removed — sport now owns levels
     });
     setEditing(false);
   };
 
   return (
     <div
-      className="p-3 mb-4"
+      className="mb-4"
       style={{
+        width: "100%",
+        background: "white",
         borderRadius: "16px",
         border: "1px solid #e6e6e6",
-        backgroundColor: "#ffffff"
+        padding: "16px"
       }}
     >
       {!editing && (
         <>
           <h3
             className="h4 mb-2"
-            style={{ color: "#b300ff", fontWeight: 700 }}
+            style={{ color: "#1f2a44", fontWeight: 600 }}
+          >
+            {sport.uiLabels.categoryName?.trim() || DEFAULT_UI_LABELS.categoryName} Details
+          </h3>
+
+          <div
+            style={{
+              color: "#b300ff",
+              fontWeight: 700,
+              fontSize: "20px",
+              marginBottom: "6px"
+            }}
           >
             {category.name}
-          </h3>
+          </div>
 
           {category.description && (
             <div className="text-muted small mb-2">
@@ -61,31 +63,32 @@ export default function CategoryHeader({
             </div>
           )}
 
-          <div className="text-muted small mb-3">
-            <strong>Levels:</strong>{" "}
-            {levels.length > 0 ? levels.join(", ") : "None"}
+          <div className="d-flex justify-content-end">
+            <button
+              className="btn"
+              style={{
+                backgroundColor: "#b300ff",
+                color: "white",
+                fontWeight: 600,
+                borderRadius: "10px",
+                padding: "6px 14px"
+              }}
+              onClick={() => setEditing(true)}
+            >
+              Edit Category
+            </button>
           </div>
-
-          <button
-            className="btn btn-sm"
-            style={{
-              borderRadius: "10px",
-              border: "1px solid #dcdcdc",
-              color: "#1f2a44",
-              fontWeight: 600
-            }}
-            onClick={() => setEditing(true)}
-          >
-            Edit Category
-          </button>
         </>
       )}
 
       {editing && (
         <>
-          <label className="form-label" style={{ color: "#1f2a44", fontWeight: 600 }}>
-            Edit Category
-          </label>
+          <h3
+            className="h4 mb-3"
+            style={{ color: "#1f2a44", fontWeight: 600 }}
+          >
+            Edit {sport.uiLabels.categoryName?.trim() || DEFAULT_UI_LABELS.categoryName }
+          </h3>
 
           <input
             className="form-control mb-3"
@@ -104,49 +107,15 @@ export default function CategoryHeader({
             style={{ borderRadius: "12px" }}
           />
 
-          <label className="form-label" style={{ color: "#1f2a44", fontWeight: 600 }}>
-            Levels
-          </label>
-
-          {levels.map((lvl, index) => (
-            <div key={index} className="d-flex gap-2 mb-2">
-              <input
-                className="form-control"
-                value={lvl}
-                onChange={e => updateLevelName(index, e.target.value)}
-                style={{ borderRadius: "12px" }}
-              />
-              <button
-                className="btn btn-danger btn-sm"
-                style={{ borderRadius: "10px" }}
-                onClick={() => removeLevel(index)}
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-
-          <button
-            className="btn btn-sm mb-3"
-            style={{
-              backgroundColor: "#b300ff",
-              color: "white",
-              fontWeight: 600,
-              borderRadius: "10px"
-            }}
-            onClick={addLevel}
-          >
-            + Add Level
-          </button>
-
-          <div className="d-flex gap-2">
+          <div className="d-flex gap-2 justify-content-end">
             <button
               className="btn"
               style={{
                 backgroundColor: "#b300ff",
                 color: "white",
                 fontWeight: 600,
-                borderRadius: "12px"
+                borderRadius: "12px",
+                padding: "6px 14px"
               }}
               onClick={save}
             >
@@ -158,7 +127,8 @@ export default function CategoryHeader({
               style={{
                 borderRadius: "12px",
                 border: "1px solid #dcdcdc",
-                fontWeight: 600
+                fontWeight: 600,
+                padding: "6px 14px"
               }}
               onClick={() => setEditing(false)}
             >

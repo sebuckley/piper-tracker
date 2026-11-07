@@ -1,228 +1,332 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAppStore } from "../../store/useAppStore";
+import { API_BASE } from "../../config/api";
+import RewardCard from "../rewards/RewardCard";
+import EmojiPicker from "../rewards/EmojiPicker";
+import { resolveEmoji } from "../../utils/rewardEmojis";
 
 export default function RewardsSettings() {
 
   const rewards = useAppStore(s => s.rewards);
   const addReward = useAppStore(s => s.addReward);
-  const updateReward = useAppStore(s => s.updateReward);
-  const deleteReward = useAppStore(s => s.deleteReward);
-  const [newRepeatable, setNewRepeatable] = useState(false);
 
+
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const [newName, setNewName] = useState("");
   const [newCategory, setNewCategory] = useState("Treat");
   const [newCost, setNewCost] = useState(5);
+  const [newRepeatable, setNewRepeatable] = useState(false);
+  const [newEmoji, setNewEmoji] = useState("");
 
-  const [editingId, setEditingId] = useState(null);
-  const [editName, setEditName] = useState("");
-  const [editCategory, setEditCategory] = useState("");
-  const [editCost, setEditCost] = useState(0);
+  // Search of approved global rewards
+  const [term, setTerm] = useState("");
+  const [results, setResults] = useState([]);
+  const [searched, setSearched] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+
+  const trimmed = term.trim();
+
+  useEffect(() => {
+    if (!showAddForm || trimmed.length < 2) return;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/rewards?q=${encodeURIComponent(trimmed)}`);
+        if (!res.ok) throw new Error("search failed");
+        const data = await res.json();
+        if (!cancelled) {
+          setResults(data);
+          setSearchError(false);
+          setSearched(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setResults([]);
+          setSearchError(true);
+          setSearched(true);
+        }
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [trimmed, showAddForm]);
+
+  const alreadyAdded = (g) =>
+    rewards.some(r =>
+      (r.templateId && r.templateId === g.templateId) ||
+      (g.type === "pocketMoney" && r.type === "pocketMoney") ||
+      r.name.trim().toLowerCase() === g.name.trim().toLowerCase()
+    );
+
+  const closeAdd = () => {
+    setShowAddForm(false);
+    setTerm("");
+    setResults([]);
+    setSearched(false);
+    setNewName("");
+    setNewCategory("Treat");
+    setNewCost(5);
+    setNewRepeatable(false);
+    setNewEmoji("");
+  };
+
+  const addGlobal = (g) => {
+    addReward(g.name, g.category, g.cost, g.repeatable, g.emoji, {
+      templateId: g.templateId,
+      type: g.type,
+      amount: g.amount,
+      fromGlobal: true
+    });
+    closeAdd();
+  };
+
+  const showForm = trimmed.length >= 2 && searched && results.length === 0;
 
   return (
-    <div
-      className="card shadow-sm mt-4"
-      style={{ borderRadius: "16px", border: "1px solid #e6e6e6" }}
-    >
-      <div className="p-4">
+    <div className="container" style={{ maxWidth: "1200px" }}>
 
-        <h2
-          className="h5 mb-4"
-          style={{ color: "#1f2a44", fontWeight: "600" }}
+      {/* Breadcrumb */}
+      <div
+        className="mb-3"
+        style={{ fontSize: "18px", fontWeight: 600, textAlign: "left" }}
+      >
+        <Link
+          to="/settings"
+          style={{
+            color: "#b300ff",
+            fontWeight: 600,
+            textDecoration: "none",
+            fontSize: "18px"
+          }}
         >
-          Reward Templates
-        </h2>
+          Settings
+        </Link>
+        <span style={{ color: "#1f2a44", margin: "0 8px" }}>/</span>
+        <span style={{ color: "#1f2a44" }}>Reward Templates</span>
+      </div>
 
-        {/* Add Reward Template */}
-        <div className="row mb-4">
-          <div className="col-md-4 mb-2">
-            <input
-              className="form-control"
-              placeholder="Reward name"
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              style={{ borderRadius: "10px" }}
-            />
+      {/* Page Title */}
+      <h2
+        className="h3 mt-3 mb-4"
+        style={{
+          color: "#b300ff",
+          fontWeight: 700,
+          letterSpacing: "0.5px",
+          textAlign: "left"
+        }}
+      >
+        Reward Templates
+      </h2>
+
+      {/* Section Header + Add Button */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h3
+          className="h4"
+          style={{ color: "#1f2a44", fontWeight: 600 }}
+        >
+          Templates
+        </h3>
+
+        <button
+          className="btn"
+          style={{
+            background: "#b300ff",
+            color: "white",
+            borderRadius: "10px",
+            padding: "6px 14px",
+            fontWeight: 600
+          }}
+          onClick={() => setShowAddForm(true)}
+        >
+          Add Reward
+        </button>
+      </div>
+
+      {/* Add Form */}
+      {showAddForm && (
+        <div
+          className="mb-4"
+          style={{
+            background: "white",
+            border: "1px solid #e6e6e6",
+            borderRadius: "16px",
+            padding: "20px"
+          }}
+        >
+          <h4
+            className="h5 mb-3"
+            style={{ color: "#1f2a44", fontWeight: 600 }}
+          >
+            Find or Add Reward
+          </h4>
+
+          <input
+            className="form-control"
+            style={{ borderRadius: "12px" }}
+            placeholder="Search rewards by name…"
+            value={term}
+            autoFocus
+            onChange={(e) => {
+              setTerm(e.target.value);
+              setNewName(e.target.value);
+              setSearched(false);
+            }}
+          />
+
+          <div className="text-muted small mt-2 mb-3">
+            Search rewards already added by other users. If yours isn't listed, you can add it
+            below and it will be sent for review.
           </div>
 
-          <div className="col-md-3 mb-2">
-            <select
-              className="form-select"
-              value={newCategory}
-              onChange={e => setNewCategory(e.target.value)}
-              style={{ borderRadius: "10px" }}
-            >
-              <option>Treat</option>
-              <option>Activity</option>
-              <option>Privilege</option>
-            </select>
+          {searchError && (
+            <div className="text-danger small mb-2">
+              Couldn't search existing rewards right now. You can still add a new one.
+            </div>
+          )}
+
+          {results.map(g => {
+            const added = alreadyAdded(g);
+            return (
+              <div
+                key={g.templateId}
+                className="p-2 mb-2 d-flex justify-content-between align-items-center"
+                style={{ borderRadius: "10px", border: "1px solid #e6e6e6", backgroundColor: "#fafafa" }}
+              >
+                <div style={{ textAlign: "left" }}>
+                  <strong>{resolveEmoji(g.emoji)} {g.name}</strong>
+                  <div className="text-muted small">{g.category} · {g.cost} ⭐</div>
+                </div>
+                <button
+                  className="btn btn-sm"
+                  disabled={added}
+                  style={{
+                    background: "#b300ff",
+                    color: "white",
+                    borderRadius: "10px",
+                    padding: "6px 14px",
+                    fontWeight: 600
+                  }}
+                  onClick={() => addGlobal(g)}
+                >
+                  {added ? "Added" : "+ Add"}
+                </button>
+              </div>
+            );
+          })}
+
+          {showForm && (
+          <>
+          <div className="text-muted small mb-2">
+            No rewards found for "{trimmed}" — add it below.
           </div>
 
-          <div className="col-md-3 mb-2">
-            <select
-                className="form-select"
-                value={newRepeatable}
-                onChange={e => setNewRepeatable(e.target.value === "true")}
-                style={{ borderRadius: "10px" }}
-            >
-                <option value="false">One-off</option>
-                <option value="true">Repeatable</option>
-            </select>
+          <div className="row">
+            <div className="col-md-4 mb-3">
+              <input
+                className="form-control"
+                style={{ borderRadius: "12px" }}
+                placeholder="Reward name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
             </div>
 
+            <div className="col-12">
+              <EmojiPicker value={newEmoji} onChange={setNewEmoji} />
+            </div>
 
-          <div className="col-md-2 mb-2">
-            <input
-              type="number"
-              min="1"
-              className="form-control"
-              value={newCost}
-              onChange={e => setNewCost(Number(e.target.value))}
-              style={{ borderRadius: "10px" }}
-            />
+            <div className="col-md-3 mb-3">
+              <select
+                className="form-select"
+                style={{ borderRadius: "12px" }}
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+              >
+                <option>Treat</option>
+                <option>Activity</option>
+                <option>Privilege</option>
+              </select>
+            </div>
+
+            <div className="col-md-3 mb-3">
+              <select
+                className="form-select"
+                style={{ borderRadius: "12px" }}
+                value={newRepeatable}
+                onChange={(e) => setNewRepeatable(e.target.value === "true")}
+              >
+                <option value="false">One-off</option>
+                <option value="true">Repeatable</option>
+              </select>
+            </div>
+
+            <div className="col-md-2 mb-3">
+              <input
+                type="number"
+                min="1"
+                className="form-control"
+                style={{ borderRadius: "12px" }}
+                value={newCost}
+                onChange={(e) => setNewCost(Number(e.target.value))}
+              />
+            </div>
           </div>
+          </>
+          )}
 
-          <div className="col-md-3 mb-2">
+          <div className="d-flex justify-content-end gap-2">
+            {showForm && (
             <button
-              className="btn w-100"
+              className="btn"
               style={{
-                backgroundColor: "#b300ff",
+                background: "#b300ff",
                 color: "white",
-                fontWeight: "600",
-                borderRadius: "12px"
+                borderRadius: "10px",
+                padding: "6px 14px",
+                fontWeight: 600
               }}
               onClick={() => {
                 if (!newName.trim()) return;
-                addReward(newName.trim(), newCategory, newCost);
-                setNewName("");
-                setNewCost(5);
+                addReward(newName.trim(), newCategory, newCost, newRepeatable, newEmoji.trim());
+                closeAdd();
               }}
             >
-              Add Reward
+              Save
+            </button>
+            )}
+
+            <button
+              className="btn"
+              style={{
+                background: "white",
+                border: "1px solid #ccc",
+                borderRadius: "10px",
+                padding: "6px 14px",
+                fontWeight: 600
+              }}
+              onClick={closeAdd}
+            >
+              Cancel
             </button>
           </div>
         </div>
+      )}
 
-        {/* Reward Template List */}
-        <ul className="list-group">
-          {rewards.map(r => (
-            <li
-              key={r.id}
-              className="list-group-item"
-              style={{ borderRadius: "10px", marginBottom: "14px" }}
-            >
-              {editingId === r.id ? (
-                <div className="row mb-3">
-                  <div className="col-md-4 mb-2">
-                    <input
-                      className="form-control"
-                      value={editName}
-                      onChange={e => setEditName(e.target.value)}
-                      style={{ borderRadius: "10px" }}
-                    />
-                  </div>
-
-                  <div className="col-md-3 mb-2">
-                    <select
-                      className="form-select"
-                      value={editCategory}
-                      onChange={e => setEditCategory(e.target.value)}
-                      style={{ borderRadius: "10px" }}
-                    >
-                      <option>Treat</option>
-                      <option>Activity</option>
-                      <option>Privilege</option>
-                    </select>
-                  </div>
-
-                  <div className="col-md-3 mb-2">
-  <select
-                className="form-select"
-                value={newRepeatable}
-                onChange={e => setNewRepeatable(e.target.value === "true")}
-                style={{ borderRadius: "10px" }}
-            >
-                <option value="false">One-off</option>
-                <option value="true">Repeatable</option>
-            </select>
-            </div>
-
-
-                  <div className="col-md-2 mb-2">
-                    <input
-                      type="number"
-                      min="1"
-                      className="form-control"
-                      value={editCost}
-                      onChange={e => setEditCost(Number(e.target.value))}
-                      style={{ borderRadius: "10px" }}
-                    />
-                  </div>
-
-                  <div className="col-md-3 mb-2 d-flex gap-2">
-                    <button
-                      className="btn btn-success w-50"
-                      style={{ borderRadius: "10px" }}
-                      onClick={() => {
-                        updateReward(r.id, {
-                          name: editName,
-                          category: editCategory,
-                          cost: editCost,
-                          repeatable: newRepeatable     
-                        });
-                        setEditingId(null);
-                      }}
-                    >
-                      Save
-                    </button>
-
-                    <button
-                      className="btn btn-secondary w-50"
-                      style={{ borderRadius: "10px" }}
-                      onClick={() => setEditingId(null)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="d-flex justify-content-between align-items-center">
-                  <div>
-                    <strong style={{ color: "#1f2a44" }}>{r.name}</strong>
-                    <div className="text-muted small">{r.category}</div>
-                    <div className="text-muted small">Cost: {r.cost} ⭐</div>
-                  </div>
-
-                  <div className="d-flex gap-2">
-                    <button
-                      className="btn btn-outline-primary btn-sm"
-                      style={{ borderRadius: "10px" }}
-                      onClick={() => {
-                        setEditingId(r.id);
-                        setEditName(r.name);
-                        setEditCategory(r.category);
-                        setEditCost(r.cost);
-                        setNewRepeatable(r.repeatable);
-                      }}
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      className="btn btn-outline-danger btn-sm"
-                      style={{ borderRadius: "10px" }}
-                      onClick={() => deleteReward(r.id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-
-      </div>
+      {/* Reward List */}
+      {rewards.map((r) => (
+        <RewardCard
+          key={r.id}
+          item={r}
+          type="reward-settings"
+     
+        />
+      ))}
     </div>
   );
 }

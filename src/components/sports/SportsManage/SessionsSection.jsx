@@ -10,7 +10,7 @@ export default function SessionsSection({ sport }) {
   return (
     <div className="mt-4">
       <h3 className="h4" style={{ color: "#1f2a44", fontWeight: 600 }}>
-        Sessions
+        Classes / Sessions
       </h3>
 
       <div className="d-flex justify-content-end mb-3">
@@ -22,7 +22,7 @@ export default function SessionsSection({ sport }) {
             setShowForm(true);
           }}
         >
-          + Add Session
+          + Add Session(s)
         </button>
       </div>
 

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import ClubForm from "./ClubForm";
+import ClubSearchAdd from "./ClubSearchAdd";
 import { useAppStore } from "../../../store/useAppStore";
+import { formatAddress } from "../../../utils/formatAddress";
 
 export default function ClubsSection({ sport }) {
   const { hideClub } = useAppStore();
@@ -55,10 +57,13 @@ export default function ClubsSection({ sport }) {
     LinkedIn: handle => `https://www.linkedin.com/in/${handle.replace("@", "")}`
   };
 
+
+
+
   return (
     <div className="mt-4">
       <h3 className="h4" style={{ color: "#1f2a44", fontWeight: 600 }}>
-        Clubs / Providers
+        {sport.name} Clubs / Providers
       </h3>
 
       <div className="d-flex justify-content-end mb-3">
@@ -70,11 +75,11 @@ export default function ClubsSection({ sport }) {
             setShowForm(true);
           }}
         >
-          + Add Club
+          + Add Club(s)
         </button>
       </div>
 
-      {showForm && (
+      {showForm && editingClub && (
         <ClubForm
           sport={sport}
           editingClub={editingClub}
@@ -82,6 +87,13 @@ export default function ClubsSection({ sport }) {
             setShowForm(false);
             setEditingClub(null);
           }}
+        />
+      )}
+
+      {showForm && !editingClub && (
+        <ClubSearchAdd
+          sport={sport}
+          close={() => setShowForm(false)}
         />
       )}
 
@@ -106,7 +118,11 @@ export default function ClubsSection({ sport }) {
               </strong>
 
               <div className="small text-muted mt-2">
-                {club.address && <div><strong>Address:</strong> {club.address}</div>}
+                {club.address && (
+                  <div>
+                    <strong>Address:</strong> {formatAddress(club.address)}
+                  </div>
+                )}
 
                 {club.email && (
                   <div>

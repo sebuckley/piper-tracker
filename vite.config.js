@@ -9,5 +9,10 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
-  server: { hmr: false }
+  server: { hmr: false },
+  resolve: {
+    alias: {
+      "@": "/src"
+    }
+  }
 })

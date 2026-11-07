@@ -1,11 +1,14 @@
 import { useParams, Link } from "react-router-dom";
 import { useAppStore } from "../../store/useAppStore";
+import SportLevelsEditor from "./SportsManage/SportsLevels";
+import { formatAddress } from "../../utils/formatAddress";
+import { DEFAULT_UI_LABELS } from "../../utils/DEFAULT_LABELS";
 
 export default function SportsDetails() {
   const { id } = useParams();
   const sports = useAppStore(s => s.sportsClasses);
 
-  const sport = sports.find(s => s.id === id);
+  const sport = sports.find(s => s.templateId === id);
 
   if (!sport) {
     return (
@@ -40,6 +43,8 @@ export default function SportsDetails() {
 
   const visibleSessions = sport.classSessions.filter(isWithin7Days);
 
+  console.log(sport);
+  
   // ⭐ Social Icons
   const SOCIAL_ICONS = {
     Facebook: (
@@ -89,321 +94,372 @@ export default function SportsDetails() {
     LinkedIn: handle => `https://www.linkedin.com/in/${handle.replace("@", "")}`
   };
 
-  return (
-    <div className="container mt-4">
+return (
+  <div
+    className="container mt-4"
+    style={{
+      maxWidth: "1200px",
+      background: "white",
+      borderRadius: "16px",
+      padding: "24px",
+      border: "2px solid #e6e6e6"
+    }}
+  >
+    {/* ⭐ Breadcrumb */}
+    <div className="mb-3">
+      <nav style={{ fontWeight: 600, fontSize: "18px", textAlign: "left" }}>
+        <Link to="/sports" style={{ color: "#b300ff", textDecoration: "none" }}>
+          Sports & Activities
+        </Link>
+        <span style={{ color: "#1f2a44", margin: "0 6px" }}>›</span>
+        <span style={{ color: "#1f2a44" }}>{sport.name}</span>
+      </nav>
+    </div>
 
-      {/* ⭐ Breadcrumb */}
-      <div className="mb-3">
-        <nav style={{ fontWeight: 600, fontSize: "18px", textAlign: "left" }}>
-          <Link to="/sports" style={{ color: "#b300ff", textDecoration: "none" }}>
-            Sports & Activities
-          </Link>
-          <span style={{ color: "#1f2a44", margin: "0 6px" }}>›</span>
-          <span style={{ color: "#1f2a44" }}>{sport.name}</span>
-        </nav>
+    {/* ⭐ Page Title */}
+    <h2
+      className="h3 mt-3 mb-4 text-center"
+      style={{
+        color: "#b300ff",
+        fontWeight: 700,
+        letterSpacing: "0.5px"
+      }}
+    >
+      {sport.name}
+    </h2>
+
+    {/* ⭐ Summary Card */}
+    <div
+      className="p-3 mb-4"
+      style={{
+        width: "100%",
+        borderRadius: "16px",
+        border: "1px solid #e6e6e6",
+        backgroundColor: "#ffffff"
+      }}
+    >
+      <div className="row text-muted small mb-3">
+
+        <div className="col-md-3 mb-2 text-center">
+          <strong style={{ color: "#1f2a44" }}>Sessions</strong>
+          <div style={{ color: "#b300ff", fontWeight: 700, fontSize: "2.5rem" }}>
+            {sport.classSessions.length}
+          </div>
+        </div>
+
+        <div className="col-md-3 mb-2 text-center">
+          <strong style={{ color: "#1f2a44" }}>{sport.uiLabels.categoryPlural?.trim() || DEFAULT_UI_LABELS.categoryPlural}</strong>
+          <div style={{ color: "#b300ff", fontWeight: 700, fontSize: "2.5rem" }}>
+            {sport.categories.length}
+          </div>
+        </div>
+
+        <div className="col-md-3 mb-2 text-center">
+          <strong style={{ color: "#1f2a44" }}>Routines</strong>
+          <div style={{ color: "#b300ff", fontWeight: 700, fontSize: "2.5rem" }}>
+            {totalRoutines}
+          </div>
+        </div>
+
+        <div className="col-md-3 mb-2 text-center">
+          <strong style={{ color: "#1f2a44" }}>Skills</strong>
+          <div style={{ color: "#b300ff", fontWeight: 700, fontSize: "2.5rem" }}>
+            {totalSkills}
+          </div>
+        </div>
+
       </div>
 
-      {/* ⭐ Page Title */}
-      <h2
-        className="h3 mt-3 mb-4"
-        style={{
-          color: "#b300ff",
-          fontWeight: 700,
-          letterSpacing: "0.5px"
-        }}
-      >
-        {sport.name}
-      </h2>
+      {/* ⭐ Action Buttons */}
+      <div className="d-flex gap-3 flex-wrap justify-content-end">
 
-      {/* ⭐ Summary Card */}
+        <Link
+          to={`/sports/${sport.templateId}/manage`}
+          className="btn btn-sm"
+          style={{
+            borderRadius: "10px",
+            backgroundColor: "#b300ff",
+            color: "white",
+            fontWeight: 600,
+            padding: "6px 14px"
+          }}
+        >
+          Manage
+        </Link>
+
+        <Link
+          to={`/sports/${sport.templateId}/feedback`}
+          className="btn btn-sm"
+          style={{
+            borderRadius: "10px",
+            backgroundColor: "#b300ff",
+            color: "white",
+            fontWeight: 600,
+            padding: "6px 14px"
+          }}
+        >
+          Session Feedback
+        </Link>
+
+        <Link
+          to={`/sports/${sport.templateId}/history`}
+          className="btn btn-sm"
+          style={{
+            borderRadius: "10px",
+            backgroundColor: "#b300ff",
+            color: "white",
+            fontWeight: 600,
+            padding: "6px 14px"
+          }}
+        >
+          Session History
+        </Link>
+
+      </div>
+    </div>
+
+    {/* ⭐ Clubs */}
+    <h3 className="h4 mb-2" style={{ color: "#1f2a44", fontWeight: 600 }}>
+      {sport.name} Clubs / Providers
+    </h3>
+
+    {sport.clubs?.filter(c => !c.hidden).length === 0 && (
+      <div className="text-muted small mb-3">No clubs added yet.</div>
+    )}
+
+    {sport.clubs?.filter(c => !c.hidden).map(club => (
       <div
-        className="p-3 mb-4"
+        key={club.id}
+        className="mb-3 p-3"
         style={{
+          width: "100%",
           borderRadius: "16px",
           border: "1px solid #e6e6e6",
           backgroundColor: "#ffffff"
         }}
       >
-        <div className="row text-muted small mb-3">
+        <strong style={{ color: "#b300ff", fontSize: "16px" }}>
+          {club.name}
+        </strong>
 
-          <div className="col-md-3 mb-2">
-            <strong style={{ color: "#1f2a44" }}>Sessions:</strong>
-            <br />
-            <span style={{ color: "#b300ff", fontWeight: 700 }}>
-              {sport.classSessions.length}
-            </span>
-          </div>
-
-          <div className="col-md-3 mb-2">
-            <strong style={{ color: "#1f2a44" }}>Categories:</strong>
-            <br />
-            <span style={{ color: "#b300ff", fontWeight: 700 }}>
-              {sport.categories.length}
-            </span>
-          </div>
-
-          <div className="col-md-3 mb-2">
-            <strong style={{ color: "#1f2a44" }}>Total Routines:</strong>
-            <br />
-            <span style={{ color: "#b300ff", fontWeight: 700 }}>
-              {totalRoutines}
-            </span>
-          </div>
-
-          <div className="col-md-3 mb-2">
-            <strong style={{ color: "#1f2a44" }}>Total Skills:</strong>
-            <br />
-            <span style={{ color: "#b300ff", fontWeight: 700 }}>
-              {totalSkills}
-            </span>
-          </div>
-
-        </div>
-
-        {/* ⭐ Action Buttons */}
-        <div className="d-flex gap-3 flex-wrap justify-content-end">
-
-          <Link
-            to={`/sports/${sport.id}/manage`}
-            className="btn btn-light"
-            style={{
-              borderRadius: "10px",
-              border: "1px solid #dcdcdc",
-              fontWeight: 600
-            }}
-          >
-            Manage
-          </Link>
-
-          <Link
-            to={`/sports/${sport.id}/feedback`}
-            className="btn btn-light"
-            style={{
-              borderRadius: "10px",
-              border: "1px solid #dcdcdc",
-              fontWeight: 600
-            }}
-          >
-            Session Feedback
-          </Link>
-
-          <Link
-            to={`/sports/${sport.id}/history`}
-            className="btn btn-light"
-            style={{
-              borderRadius: "10px",
-              border: "1px solid #dcdcdc",
-              fontWeight: 600
-            }}
-          >
-            Session History
-          </Link>
-
-        </div>
-      </div>
-
-      {/* ⭐ Clubs */}
-      <h3 className="h4" style={{ color: "#1f2a44", fontWeight: 600 }}>
-        Clubs / Providers
-      </h3>
-
-      {sport.clubs?.filter(c => !c.hidden).length === 0 && (
-        <div className="text-muted small mb-3">No clubs added yet.</div>
-      )}
-
-      {sport.clubs?.filter(c => !c.hidden).map(club => (
-        <div
-          key={club.id}
-          className="mb-3 p-3"
-          style={{
-            borderRadius: "16px",
-            border: "1px solid #e6e6e6",
-            backgroundColor: "#ffffff"
-          }}
-        >
-          <strong style={{ color: "#b300ff", fontSize: "16px" }}>
-            {club.name}
-          </strong>
-
-          <div className="small text-muted mt-2">
-            {club.address && <div><strong>Address:</strong> {club.address}</div>}
-
-            {club.email && (
-              <div>
-                <strong>Email:</strong>{" "}
-                <a href={`mailto:${club.email}`} style={{ color: "#b300ff" }}>
-                  {club.email}
-                </a>
-              </div>
-            )}
-
-            {club.website && (
-              <div>
-                <strong>Website:</strong>{" "}
-                <a
-                  href={club.website.startsWith("http") ? club.website : `https://${club.website}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "#b300ff" }}
-                >
-                  {club.website}
-                </a>
-              </div>
-            )}
-          </div>
-
-          {/* ⭐ Social Media Icons */}
-          {club.socials?.length > 0 && (
-            <div className="d-flex gap-2 mt-3 flex-wrap align-items-center justify-content-center">
-
-              {club.socials.map((s, index) => {
-                const Icon = SOCIAL_ICONS[s.platform];
-                const url = SOCIAL_URLS[s.platform]?.(s.handle);
-
-                return (
-                  <a
-                    key={index}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      padding: "6px 10px",
-                      borderRadius: "12px",
-                      border: "1px solid #b300ff",
-                      backgroundColor: "#b300ff10",
-                      color: "#b300ff",
-                      fontWeight: 600,
-                      textDecoration: "none"
-                    }}
-                  >
-                    {Icon}
-                  </a>
-                );
-              })}
+        <div className="small text-muted mt-2">
+          {club.address && <div><strong>Address:</strong> {formatAddress(club.address)}</div>}
+          {club.email && (
+            <div>
+              <strong>Email:</strong>{" "}
+              <a href={`mailto:${club.email}`} style={{ color: "#b300ff" }}>
+                {club.email}
+              </a>
+            </div>
+          )}
+          {club.website && (
+            <div>
+              <strong>Website:</strong>{" "}
+              <a
+                href={club.website.startsWith("http") ? club.website : `https://${club.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#b300ff" }}
+              >
+                {club.website}
+              </a>
             </div>
           )}
         </div>
-      ))}
 
-      {/* ⭐ Class Sessions */}
-      <h3
-        className="h4"
-        style={{ color: "#1f2a44", fontWeight: 600 }}
-      >
-        Class Sessions (Next 7 Days)
-      </h3>
+        {/* ⭐ Social Icons */}
+        {club.socials?.length > 0 && (
+          <div className="d-flex gap-2 mt-3 flex-wrap align-items-center">
+            {club.socials.map((s, index) => {
+              const Icon = SOCIAL_ICONS[s.platform];
+              const url = SOCIAL_URLS[s.platform]?.(s.handle);
 
-      {visibleSessions.length === 0 && (
-        <div className="text-muted small mb-3">No upcoming sessions.</div>
-      )}
+              return (
+                <a
+                  key={index}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "6px 10px",
+                    borderRadius: "12px",
+                    border: "1px solid #b300ff",
+                    backgroundColor: "#b300ff10",
+                    color: "#b300ff",
+                    fontWeight: 600,
+                    textDecoration: "none"
+                  }}
+                >
+                  {Icon}
+                </a>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    ))}
 
-      {visibleSessions.length > 0 && (
-        <div className="mb-4">
-          {visibleSessions.map(session => {
-            const club = sport.clubs?.find(c => c.id === session.clubId);
+    {/* ⭐ Class Sessions */}
+    <h3 className="h4 mb-2" style={{ color: "#1f2a44", fontWeight: 600 }}>
+      Class Sessions (Next 7 Days)
+    </h3>
 
-            return (
-              <div
-                key={session.id}
-                className="p-3 mb-3"
-                style={{
-                  borderRadius: "16px",
-                  border: "1px solid #e6e6e6",
-                  backgroundColor: "#ffffff"
-                }}
-              >
-                <strong style={{ color: "#b300ff" }}>
-                  {session.day} — {session.time}
-                </strong>
+    {visibleSessions.length === 0 && (
+      <div className="text-muted small mb-3">No upcoming sessions.</div>
+    )}
 
-                {session.startDate && (
-                  <div className="small text-muted">
-                    <strong>Start Date:</strong>{" "}
-                    {new Date(session.startDate).toLocaleDateString()}
-                  </div>
-                )}
+    {visibleSessions.length > 0 && (
+      <div className="mb-4">
+        {visibleSessions.map(session => {
+          const club = sport.clubs?.find(c => c.id === session.clubId);
 
-                <div className="small text-muted mt-1">
-                  <strong>Status:</strong> {session.status}
+          return (
+            <div
+              key={session.id}
+              className="p-3 mb-3"
+              style={{
+                width: "100%",
+                borderRadius: "16px",
+                border: "1px solid #e6e6e6",
+                backgroundColor: "#ffffff"
+              }}
+            >
+              <strong style={{ color: "#b300ff" }}>
+                {session.day} — {session.time}
+              </strong>
+
+              {session.startDate && (
+                <div className="small text-muted">
+                  <strong>Start Date:</strong>{" "}
+                  {new Date(session.startDate).toLocaleDateString()}
                 </div>
+              )}
 
-                {club && (
-                  <div className="small text-muted">
-                    <strong>Club:</strong> {club.name}
-                  </div>
-                )}
-
-                {session.categories?.length > 0 && (
-                  <div className="d-flex flex-wrap gap-2 mt-2">
-                    {session.categories.map(catId => {
-                      const cat = sport.categories.find(c => c.id === catId);
-                      return (
-                        <span>                        </span>
-                      );
-                    })}
-                  </div>
-                )}
+              <div className="small text-muted mt-1">
+                <strong>Status:</strong> {session.status}
               </div>
-            );
-          })}
-        </div>
-      )}
 
-      {/* ⭐ Categories */}
-      <h3
-        className="h4"
-        style={{ color: "#1f2a44", fontWeight: 600 }}
+              {club && (
+                <div className="small text-muted">
+                  <strong>Club:</strong> {club.name}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    {/* ⭐ Levels */}
+
+    <SportLevelsEditor
+      sport={sport}
+      updateSport={()=>{}}
+      edit={false}
+    />
+
+    {/* ⭐ Categories */}
+    <h3 className="h4 mb-2" style={{ color: "#1f2a44", fontWeight: 600 }}>
+      {sport.uiLabels.categoryPlural?.trim() || DEFAULT_UI_LABELS.categoryPlural}
+    </h3>
+
+    {sport.categories.length === 0 && (
+      <div className="text-muted small mb-3">No categories added yet.</div>
+    )}
+
+    {sport.categories.map(cat => (
+      <div
+        key={cat.id}
+        className="mb-3"
+        style={{
+          width: "100%",
+          borderRadius: "16px",
+          border: "1px solid #e6e6e6",
+          backgroundColor: "#ffffff",
+          overflow: "hidden"
+        }}
       >
-        Categories
-      </h3>
-
-      {sport.categories.length === 0 && (
-        <div className="text-muted small mb-3">No categories added yet.</div>
-      )}
-
-      {sport.categories.map(cat => (
+        {/* ⭐ Purple Header */}
         <div
-          key={cat.id}
-          className="mb-3 p-3"
           style={{
-            borderRadius: "16px",
-            border: "1px solid #e6e6e6",
-            backgroundColor: "#ffffff"
+            backgroundColor: "#b300ff",
+            color: "white",
+            padding: "10px 14px",
+            fontWeight: 700,
+            fontSize: "16px"
           }}
         >
-          <h5
-            className="h6 mb-2"
+          {cat.name}
+        </div>
+
+        {/* ⭐ Content */}
+        <div className="p-3">
+
+          <div
+            className="d-flex gap-3 flex-wrap mb-3"
             style={{ color: "#1f2a44", fontWeight: 600 }}
           >
-            {cat.name}
-          </h5>
+            <div
+              style={{
+                flex: "0 0 auto",
+                background: "#f8f8f8",
+                padding: "8px 12px",
+                borderRadius: "12px",
+                border: "1px solid #e6e6e6",
+                minWidth: "120px",
+                textAlign: "center"
+              }}
+            >
+              <div className="small text-muted">Routines</div>
+              <div style={{ color: "#b300ff", fontSize: "20px", fontWeight: 700 }}>
+                {cat.routines.length}
+              </div>
+            </div>
 
-          <div className="small text-muted mb-2">
-            <strong>Routines:</strong> {cat.routines.length}
-            <br />
-            <strong>Skills:</strong> {cat.skills.length}
+            <div
+              style={{
+                flex: "0 0 auto",
+                background: "#f8f8f8",
+                padding: "8px 12px",
+                borderRadius: "12px",
+                border: "1px solid #e6e6e6",
+                minWidth: "120px",
+                textAlign: "center"
+              }}
+            >
+              <div className="small text-muted">Skills</div>
+              <div style={{ color: "#b300ff", fontSize: "20px", fontWeight: 700 }}>
+                {cat.skills.length}
+              </div>
+            </div>
           </div>
 
           <div className="d-flex justify-content-end">
             <Link
-              to={`/sports/${sport.id}/categories/${cat.id}`}
-              className="btn btn-light btn-sm"
+              to={`/sports/${sport.templateId}/categories/${cat.templateId}`}
+              className="btn btn-sm"
               style={{
                 borderRadius: "10px",
-                border: "1px solid #dcdcdc",
-                fontWeight: 600
+                backgroundColor: "#b300ff",
+                color: "white",
+                fontWeight: 600,
+                padding: "6px 14px"
               }}
             >
               View
             </Link>
           </div>
-        </div>
-      ))}
 
-    </div>
-  );
+        </div>
+      </div>
+    ))}
+
+  </div>
+);
+
+
 
 }

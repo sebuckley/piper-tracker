@@ -1,8 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Gloria+Hallelujah&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Love+Ya+Like+A+Sister&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 
 :root {
   --text: #6b6375;
@@ -18,7 +19,7 @@
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: "Love Ya Like A Sister", cursive;
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
@@ -112,4 +113,22 @@ code {
   line-height: 135%;
   padding: 4px 8px;
   background: var(--code-bg);
+}
+
+.hs2-circle {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 6px solid #e5e5e5; /* neutral */
+  border-top-color: #b300ff; /* purple accent */
+  animation: hs2-spin 1.2s linear infinite;
+}
+
+@keyframes hs2-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }

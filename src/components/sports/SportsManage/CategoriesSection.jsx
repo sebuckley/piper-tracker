@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAppStore } from "../../../store/useAppStore";
 import { useNavigate } from "react-router-dom";
+import { DEFAULT_UI_LABELS } from "../../../utils/DEFAULT_LABELS";
 
 export default function CategoriesSection({ sport }) {
   const { addCategory, deleteCategory } = useAppStore();
@@ -9,7 +10,7 @@ export default function CategoriesSection({ sport }) {
   const [showForm, setShowForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
 
-  const label = sport.categoryLabel || "Category";
+ 
 
   const saveCategory = () => {
     if (!newCategoryName.trim()) return;
@@ -21,7 +22,7 @@ export default function CategoriesSection({ sport }) {
   return (
     <div className="mt-4">
       <h3 className="h4" style={{ color: "#1f2a44", fontWeight: 600 }}>
-        {label}s
+        {sport.uiLabels.categoryPlural?.trim() || DEFAULT_UI_LABELS.categoryPlural}
       </h3>
 
       <div className="d-flex justify-content-end mb-3">
@@ -30,7 +31,7 @@ export default function CategoriesSection({ sport }) {
           style={{ backgroundColor: "#b300ff", color: "white", borderRadius: "10px" }}
           onClick={() => setShowForm(true)}
         >
-          + Add {label}
+          + Add {sport.uiLabels.categoryName?.trim() || DEFAULT_UI_LABELS.categoryName}
         </button>
       </div>
 
@@ -44,12 +45,12 @@ export default function CategoriesSection({ sport }) {
           }}
         >
           <label className="form-label" style={{ color: "#1f2a44", fontWeight: 600 }}>
-            New {label}
+            New {sport.uiLabels.categoryName?.trim() || DEFAULT_UI_LABELS.categoryName}
           </label>
 
           <input
             className="form-control mb-3"
-            placeholder={`Add a new ${label.toLowerCase()}`}
+            placeholder={`Add a new ${(sport.uiLabels.categoryName?.trim() || DEFAULT_UI_LABELS.categoryName).toLowerCase()}`}
             value={newCategoryName}
             onChange={e => setNewCategoryName(e.target.value)}
             style={{ borderRadius: "12px" }}
@@ -88,7 +89,7 @@ export default function CategoriesSection({ sport }) {
       )}
 
       {sport.categories.length === 0 && (
-        <div className="text-muted small">No {label.toLowerCase()}s added yet.</div>
+        <div className="text-muted small">No {(sport.uiLabels.categoryName?.trim() || DEFAULT_UI_LABELS.categoryName).toLowerCase()}s added yet.</div>
       )}
 
       {sport.categories.map(cat => (
@@ -114,7 +115,7 @@ export default function CategoriesSection({ sport }) {
                   border: "1px solid #dcdcdc",
                   color: "#1f2a44"
                 }}
-                onClick={() => navigate(`/sports/${sport.id}/categories/${cat.id}`)}
+                onClick={() => navigate(`/sports/${sport.templateId}/categories/${cat.templateId}`)}
               >
                 Manage
               </button>

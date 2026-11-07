@@ -1,8 +1,9 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import { useAppStore } from "../../store/useAppStore";
-import RoutinesSection from "./RoutinesSection";
-import SkillsSection from "./SkillsSection";
+import RoutinesSection from "./skills/routines/RoutinesSection";
+import SkillsSection from "./skills/SkillsSection";
 import CategoryHeader from "./CategoryHeader";
 
 export default function CategoryManage() {
@@ -18,26 +19,21 @@ export default function CategoryManage() {
     updateCategory,
   } = useAppStore();
 
-  const sport = sportsClasses.find(s => s.id === sportId);
-  const category = sport?.categories.find(c => c.id === categoryId);
-
-  const [showAddSkill, setShowAddSkill] = useState(false);
-  const [showAddRoutine, setShowAddRoutine] = useState(false);
-
-  const categoryLevels = category?.levels || ["Level 1", "Level 2", "Level 3", "Level 4", "Level 5"];
+  // ⭐ Hooks MUST come before any conditional return
+  const sport = sportsClasses.find(s => s.templateId === sportId);
+  const category = sport?.categories.find(c => c.templateId === categoryId);
 
   // ⭐ Skill fields
   const [newSkillName, setNewSkillName] = useState("");
   const [newSkillLevel, setNewSkillLevel] = useState("1");
-  const [customSkillLevel, setCustomSkillLevel] = useState("");
   const [newSkillDescription, setNewSkillDescription] = useState("");
   const [newSkillLink, setNewSkillLink] = useState("");
 
   // ⭐ Routine fields
   const [newRoutineName, setNewRoutineName] = useState("");
   const [newRoutineLevel, setNewRoutineLevel] = useState("1");
-  const [customRoutineLevel, setCustomRoutineLevel] = useState("");
 
+  // ⭐ NOW we can safely return early
   if (!sport || !category) {
     return (
       <div className="container mt-4">
@@ -46,8 +42,6 @@ export default function CategoryManage() {
     );
   }
 
-  
-
   // ⭐ Add Skill
   const handleAddSkill = () => {
     if (!newSkillName.trim()) {
@@ -55,24 +49,17 @@ export default function CategoryManage() {
       return;
     }
 
-    const level =
-      newSkillLevel === "custom"
-        ? parseInt(customSkillLevel) || 1
-        : parseInt(newSkillLevel);
-
     addSkill(sport.id, category.id, {
       name: newSkillName.trim(),
-      level,
+      level: parseInt(newSkillLevel),
       description: newSkillDescription.trim(),
       link: newSkillLink.trim()
     });
 
     setNewSkillName("");
     setNewSkillLevel("1");
-    setCustomSkillLevel("");
     setNewSkillDescription("");
     setNewSkillLink("");
-    setShowAddSkill(false);
   };
 
   // ⭐ Add Routine
@@ -82,22 +69,28 @@ export default function CategoryManage() {
       return;
     }
 
-    const level =
-      newRoutineLevel === "custom"
-        ? parseInt(customRoutineLevel) || 1
-        : parseInt(newRoutineLevel);
-
-    addRoutine(sport.id, category.id, newRoutineName.trim(), level);
+    addRoutine(
+      sport.id,
+      category.id,
+      newRoutineName.trim(),
+      parseInt(newRoutineLevel)
+    );
 
     setNewRoutineName("");
     setNewRoutineLevel("1");
-    setCustomRoutineLevel("");
-    setShowAddRoutine(false);
   };
 
   return (
-    <div className="container mt-4">
-
+    <div
+      className="container mt-4"
+      style={{
+        maxWidth: "1200px",
+        background: "white",
+        borderRadius: "16px",
+        padding: "24px",
+        border: "2px solid #e6e6e6"
+      }}
+    >
       {/* ⭐ Breadcrumb */}
       <div className="mb-3">
         <nav
@@ -108,13 +101,13 @@ export default function CategoryManage() {
           }}
         >
           <Link to="/sports" style={{ color: "#b300ff", textDecoration: "none" }}>
-            Sports
+            Sports & Activities
           </Link>
 
           <span style={{ color: "#1f2a44", margin: "0 6px" }}>›</span>
 
           <Link
-            to={`/sports/${sport.id}`}
+            to={`/sports/${sport.templateId}`}
             style={{ color: "#b300ff", textDecoration: "none" }}
           >
             {sport.name}
@@ -128,40 +121,50 @@ export default function CategoryManage() {
 
       {/* ⭐ Page Title */}
       <h2
-        className="h3 mt-3 mb-4"
-        style={{ color: "#b300ff", fontWeight: 700, letterSpacing: "0.5px" }}
+        className="h3 mt-3 mb-4 text-center"
+        style={{
+          color: "#b300ff",
+          fontWeight: 700,
+          letterSpacing: "0.5px"
+        }}
       >
         Manage {category.name}
       </h2>
 
+      {/* ⭐ Category Header */}
       <CategoryHeader
         sport={sport}
         category={category}
-        categoryLevels={categoryLevels}
         updateCategory={updateCategory}
       />
-
 
       {/* ⭐ Skills Section */}
       <SkillsSection
         sport={sport}
         category={category}
-        categoryLevels={categoryLevels}
-        addSkill={addSkill}
+        addSkill={handleAddSkill}
         deleteSkill={deleteSkill}
+        newSkillName={newSkillName}
+        setNewSkillName={setNewSkillName}
+        newSkillLevel={newSkillLevel}
+        setNewSkillLevel={setNewSkillLevel}
+        newSkillDescription={newSkillDescription}
+        setNewSkillDescription={setNewSkillDescription}
+        newSkillLink={newSkillLink}
+        setNewSkillLink={setNewSkillLink}
       />
-
-
 
       {/* ⭐ Routines Section */}
       <RoutinesSection
         sport={sport}
         category={category}
-        categoryLevels={categoryLevels}
-        addRoutine={addRoutine}
+        addRoutine={handleAddRoutine}
         deleteRoutine={deleteRoutine}
+        newRoutineName={newRoutineName}
+        setNewRoutineName={setNewRoutineName}
+        newRoutineLevel={newRoutineLevel}
+        setNewRoutineLevel={setNewRoutineLevel}
       />
-
     </div>
   );
 }

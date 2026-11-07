@@ -1,0 +1,8 @@
+# Login
+npx wrangler login
+
+# Create bucket
+npx wrangler r2 bucket create my-bucket
+
+# List buckets
+npx wrangler r2 bucket list

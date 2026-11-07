@@ -1,13 +1,11 @@
 import { nanoid } from "nanoid";
 
 // ---------------------------------------------------------
-// BEHAVIOUR SLICE — FULLY NORMALIZED + PERSIST-SAFE
+// BEHAVIOUR SLICE — FULLY NORMALIZED + AUDIT TRAIL
 // ---------------------------------------------------------
 export const createBehaviourSlice = (set, get) => ({
-  // ⭐ Guaranteed shape
   behaviourLogs: [],
 
-  // ⭐ Templates now include category (required for logs)
   behaviourTemplates: [
     { id: nanoid(), category: "Good Behaviour", desc: "Positive behaviour", stars: 1 },
     { id: nanoid(), category: "Helping with Housework", desc: "Helped around the house", stars: 2 },
@@ -18,18 +16,31 @@ export const createBehaviourSlice = (set, get) => ({
     { id: nanoid(), category: "Poor Behaviour", desc: "General poor behaviour", stars: -1 }
   ],
 
-  // ⭐ Normalize a behaviour log
+  // ⭐ Normalize behaviour log
   _normalizeBehaviourLog(log) {
     return {
       id: log.id ?? nanoid(),
-      date: log.date ?? new Date().toISOString().split("T")[0], // consistent format
+      date: log.date ?? new Date().toISOString().split("T")[0],
       category: log.category ?? "",
       description: log.description ?? "",
-      stars: Number(log.stars ?? 0)
+      stars: Number(log.stars ?? 0),
+
+      // Audit metadata
+      addedBy: log.addedBy ?? null,
+      addedAt: log.addedAt ?? null,
+      addedDeviceId: log.addedDeviceId ?? null,
+
+      updatedBy: log.updatedBy ?? null,
+      updatedAt: log.updatedAt ?? null,
+      updatedDeviceId: log.updatedDeviceId ?? null,
+
+      deletedBy: log.deletedBy ?? null,
+      deletedAt: log.deletedAt ?? null,
+      deletedDeviceId: log.deletedDeviceId ?? null
     };
   },
 
-  // ⭐ Normalize a behaviour template
+  // ⭐ Normalize template
   _normalizeBehaviourTemplate(t) {
     return {
       id: t.id ?? nanoid(),
@@ -39,10 +50,15 @@ export const createBehaviourSlice = (set, get) => ({
     };
   },
 
-  // ⭐ Add behaviour log (persist-safe)
+  // ---------------------------------------------------------
+  // ⭐ Add behaviour log (with audit metadata)
+  // ---------------------------------------------------------
   addBehaviourLog: (category, description, stars, date) => {
     const childId = get().activeChild;
     if (!childId) return;
+
+    const user = get().user;
+    const deviceId = get().deviceId;
 
     const delta = Number(stars);
     const current = Number(get().starBalance);
@@ -51,11 +67,14 @@ export const createBehaviourSlice = (set, get) => ({
       category,
       description,
       stars: delta,
-      date
+      date,
+
+      addedBy: user?.email ?? "unknown",
+      addedAt: Date.now(),
+      addedDeviceId: deviceId ?? null
     });
 
     set(state => ({
-      ...state,
       behaviourLogs: [newLog, ...state.behaviourLogs],
       starBalance: current + delta
     }));
@@ -63,7 +82,9 @@ export const createBehaviourSlice = (set, get) => ({
     get().saveToKV(childId);
   },
 
+  // ---------------------------------------------------------
   // ⭐ Add behaviour template
+  // ---------------------------------------------------------
   addBehaviourTemplate: (category, desc, stars) => {
     const newTemplate = get()._normalizeBehaviourTemplate({
       category,
@@ -72,15 +93,15 @@ export const createBehaviourSlice = (set, get) => ({
     });
 
     set(state => ({
-      ...state,
       behaviourTemplates: [...state.behaviourTemplates, newTemplate]
     }));
   },
 
+  // ---------------------------------------------------------
   // ⭐ Update behaviour template
+  // ---------------------------------------------------------
   updateBehaviourTemplate: (templateId, updates) => {
     set(state => ({
-      ...state,
       behaviourTemplates: state.behaviourTemplates.map(t =>
         t.id === templateId
           ? get()._normalizeBehaviourTemplate({ ...t, ...updates })
@@ -89,31 +110,61 @@ export const createBehaviourSlice = (set, get) => ({
     }));
   },
 
-  // ⭐ Delete behaviour template
-  deleteBehaviourTemplate: (templateId) => {
-    set(state => ({
-      ...state,
-      behaviourTemplates: state.behaviourTemplates.filter(t => t.id !== templateId)
-    }));
-  },
-
-  // ⭐ Update behaviour log
+  // ---------------------------------------------------------
+  // ⭐ Update behaviour log (with audit metadata)
+  // ---------------------------------------------------------
   updateBehaviourLog: (logId, updates) => {
+    const user = get().user;
+    const deviceId = get().deviceId;
+    const childId = get().activeChild;
+
+    if (!childId) return;
+
     set(state => ({
-      ...state,
       behaviourLogs: state.behaviourLogs.map(log =>
         log.id === logId
-          ? get()._normalizeBehaviourLog({ ...log, ...updates })
+          ? get()._normalizeBehaviourLog({
+              ...log,
+              ...updates,
+              updatedBy: user?.email ?? "unknown",
+              updatedAt: Date.now(),
+              updatedDeviceId: deviceId ?? null
+            })
           : log
       )
     }));
+
+    get().saveToKV(childId);
   },
 
-  // ⭐ Delete behaviour log
+  // ---------------------------------------------------------
+  // ⭐ Delete behaviour log (with audit metadata)
+  // ---------------------------------------------------------
   deleteBehaviourLog: (logId) => {
+    const user = get().user;
+    const deviceId = get().deviceId;
+    const childId = get().activeChild;
+
+    if (!childId) return;
+
+    const existing = get().behaviourLogs.find(l => l.id === logId);
+
+    if (existing) {
+      const deletedLog = {
+        ...existing,
+        deletedBy: user?.email ?? "unknown",
+        deletedAt: Date.now(),
+        deletedDeviceId: deviceId ?? null
+      };
+
+      // Optional: store deleted logs
+      // set({ behaviourDeletedLogs: [...get().behaviourDeletedLogs, deletedLog] });
+    }
+
     set(state => ({
-      ...state,
       behaviourLogs: state.behaviourLogs.filter(log => log.id !== logId)
     }));
+
+    get().saveToKV(childId);
   }
 });

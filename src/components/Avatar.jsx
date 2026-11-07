@@ -2,34 +2,21 @@ import React from "react";
 import { useAppStore } from "../store/useAppStore";
 
 export default function Avatar({ size = 48 }) {
-  const profile = useAppStore(state => state.profile);
+   const userProfile = useAppStore(s => s.userProfile);
 
-  const name = profile?.fullName?.trim() || "User";
+  const first = userProfile.firstName?.trim() || "";
+  const last = userProfile.lastName?.trim() || "";
 
-  const initials = name
+  const fullName = `${first} ${last}`.trim() || "User";
+
+  const initials = fullName
     .split(" ")
     .filter(Boolean)
     .map(part => part[0].toUpperCase())
     .slice(0, 2)
     .join("");
 
-  const hasImage = Boolean(profile?.avatarUrl);
-
-  if (hasImage) {
-    return (
-      <img
-        src={profile.avatarUrl}
-        alt="avatar"
-        style={{
-          width: size,
-          height: size,
-          borderRadius: "50%",
-          objectFit: "cover",
-          border: "2px solid #b300ff"
-        }}
-      />
-    );
-  }
+  const hasImage = Boolean(userProfile.avatarUrl);
 
   return (
     <div
@@ -37,17 +24,36 @@ export default function Avatar({ size = 48 }) {
         width: size,
         height: size,
         borderRadius: "50%",
-        backgroundColor: "#FF5CA8",
+        overflow: "hidden",
         border: "2px solid #b300ff",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontWeight: "700",
-        color: "#ffffff",
-        fontSize: size * 0.4
+        backgroundColor: hasImage ? "transparent" : "#FF5CA8",
+        margin: "0 auto"
       }}
     >
-      {initials}
+      {hasImage ? (
+        <img
+          src={profile.avatarUrl}
+          alt={fullName}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover"
+          }}
+        />
+      ) : (
+        <span
+          style={{
+            fontWeight: "700",
+            color: "#ffffff",
+            fontSize: size * 0.4
+          }}
+        >
+          {initials}
+        </span>
+      )}
     </div>
   );
 }
