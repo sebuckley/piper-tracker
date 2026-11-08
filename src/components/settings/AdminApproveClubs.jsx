@@ -1,55 +1,44 @@
-import { useEffect, useState } from "react";
-import { API_BASE } from "../../config/api";
-import { useNavigate, Link } from "react-router-dom";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useAdminApprovals } from "./useAdminApprovals";
+import AdminApprovalStatus from "./AdminApprovalStatus";
 
 export default function AdminApproveClubs() {
-  const [pendingNew, setPendingNew] = useState([]);
-  const [pendingUpdates, setPendingUpdates] = useState([]);
+  const { environment, adminLink, data, setData, error, busy, runAction, retry } = useAdminApprovals(["/api/pending/clubs", "/api/pending/club-updates"]);
+  const pendingNew = data?.[0] ?? [];
+  const pendingUpdates = data?.[1] ?? [];
   const [feedback, setFeedback] = useState("");
-  const navigate = useNavigate();
-
-  // Load both new clubs + updates
-  useEffect(() => {
-    async function load() {
-      const resNew = await fetch(`${API_BASE}/api/pending/clubs`);
-      const resUpdates = await fetch(`${API_BASE}/api/pending/club-updates`);
-
-      setPendingNew(await resNew.json());
-      setPendingUpdates(await resUpdates.json());
-    }
-    load();
-  }, []);
 
   // Approve NEW club
-  const approveNew = async (item) => {
-    await fetch(`${API_BASE}/api/approve/club`, {
+  const approveNew = item => runAction(async request => {
+    await request("/api/approve/club", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ club: item.club })
     });
 
-    await fetch(`${API_BASE}/api/pending/clubs/${item.id}`, {
+    await request(`/api/pending/clubs/${encodeURIComponent(item.id)}`, {
       method: "DELETE"
     });
 
     setFeedback(`Approved new club "${item.club.name}"`);
-    setPendingNew(pendingNew.filter(p => p.id !== item.id));
-  };
+    setData(([list, updates]) => [list.filter(p => p.id !== item.id), updates]);
+  });
 
   // Reject NEW club
-  const rejectNew = async (item) => {
-    await fetch(`${API_BASE}/api/pending/clubs/${item.id}`, {
+  const rejectNew = item => runAction(async request => {
+    await request(`/api/pending/clubs/${encodeURIComponent(item.id)}`, {
       method: "DELETE"
     });
 
     setFeedback(`Rejected new club "${item.club.name}"`);
-    setPendingNew(pendingNew.filter(p => p.id !== item.id));
-  };
+    setData(([list, updates]) => [list.filter(p => p.id !== item.id), updates]);
+  });
 
   // Approve UPDATE
-  const approveUpdate = async (item) => {
+  const approveUpdate = item => runAction(async request => {
 
-    await fetch(`${API_BASE}/api/approve/club-update`, {
+    await request("/api/approve/club-update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -58,23 +47,23 @@ export default function AdminApproveClubs() {
       })
     });
 
-    await fetch(`${API_BASE}/api/pending/club-updates/${item.id}`, {
+    await request(`/api/pending/club-updates/${encodeURIComponent(item.id)}`, {
       method: "DELETE"
     });
 
     setFeedback(`Approved update for club "${item.clubName}"`);
-    setPendingUpdates(pendingUpdates.filter(p => p.id !== item.id));
-  };
+    setData(([list, updates]) => [list, updates.filter(p => p.id !== item.id)]);
+  });
 
   // Reject UPDATE
-  const rejectUpdate = async (item) => {
-    await fetch(`${API_BASE}/api/pending/club-updates/${item.id}`, {
+  const rejectUpdate = item => runAction(async request => {
+    await request(`/api/pending/club-updates/${encodeURIComponent(item.id)}`, {
       method: "DELETE"
     });
 
     setFeedback(`Rejected update for club "${item.clubName}"`);
-    setPendingUpdates(pendingUpdates.filter(p => p.id !== item.id));
-  };
+    setData(([list, updates]) => [list, updates.filter(p => p.id !== item.id)]);
+  });
 
   // Social icons
   const SOCIAL_ICONS = {
@@ -115,20 +104,21 @@ export default function AdminApproveClubs() {
       {/* ⭐ Breadcrumb */}
       <div className="mb-3">
         <nav style={{ fontWeight: 600, fontSize: "18px", textAlign: "left" }}>
-          <Link to="/settings/admin" style={{ color: "#b300ff", textDecoration: "none" }}>
+          <Link to={adminLink} style={{ color: "#b300ff", textDecoration: "none" }}>
             Admin Panel
           </Link>
           <span style={{ color: "#1f2a44", margin: "0 6px" }}>›</span>
           <span style={{ color: "#1f2a44" }}>Approve Clubs</span>
         </nav>
       </div>
+      <AdminApprovalStatus environment={environment} adminLink={adminLink} error={error} loading={!data} retry={retry} />
 
       {/* ⭐ NEW CLUBS */}
       <h2 className="h3 mb-4" style={{ color: "#b300ff", fontWeight: 700 }}>
         Pending New Clubs
       </h2>
 
-      {pendingNew.length === 0 && (
+      {data && pendingNew.length === 0 && (
         <div className="p-3" style={{
           borderRadius: "16px",
           border: "1px solid #e6e6e6",
@@ -142,7 +132,6 @@ export default function AdminApproveClubs() {
       {pendingNew.map(item => {
         const club = item.club;
 
-        console.log(item);
 
         return (
           <div key={item.id} className="p-3 mb-3" style={{
@@ -240,6 +229,7 @@ export default function AdminApproveClubs() {
             <div className="d-flex gap-2 mt-3">
               <button
                 className="btn"
+                disabled={busy}
                 style={{
                   backgroundColor: "#b300ff",
                   color: "white",
@@ -253,6 +243,7 @@ export default function AdminApproveClubs() {
 
               <button
                 className="btn btn-light"
+                disabled={busy}
                 style={{
                   borderRadius: "12px",
                   border: "1px solid #dcdcdc",
@@ -272,7 +263,7 @@ export default function AdminApproveClubs() {
         Pending Club Updates
       </h2>
 
-      {pendingUpdates.length === 0 && (
+      {data && pendingUpdates.length === 0 && (
         <div className="p-3" style={{
           borderRadius: "16px",
           border: "1px solid #e6e6e6",
@@ -313,6 +304,7 @@ export default function AdminApproveClubs() {
           <div className="d-flex gap-2 mt-3">
             <button
               className="btn"
+              disabled={busy}
               style={{
                 backgroundColor: "#b300ff",
                 color: "white",
@@ -326,6 +318,7 @@ export default function AdminApproveClubs() {
 
             <button
               className="btn btn-light"
+              disabled={busy}
               style={{
                 borderRadius: "12px",
                 border: "1px solid #dcdcdc",

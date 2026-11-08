@@ -1,0 +1,21 @@
+.feedback-skills {
+  background: #fcf8ff;
+  border: 1px solid #eadcf0;
+  border-radius: 16px;
+}
+
+.feedback-skill {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+}
+
+.feedback-skill legend {
+  color: #1f2a44;
+}
+
+.feedback-note {
+  border-left: 3px solid #dec3ec;
+  padding-left: 12px;
+}

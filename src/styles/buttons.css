@@ -1,0 +1,28 @@
+.btn.app-btn-secondary {
+  --bs-btn-color: #70228f;
+  --bs-btn-bg: #faf4ff;
+  --bs-btn-border-color: #dec3ec;
+  --bs-btn-hover-color: #5b1676;
+  --bs-btn-hover-bg: #f1e2fa;
+  --bs-btn-hover-border-color: #b97bcf;
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: #8123a5;
+  --bs-btn-active-border-color: #8123a5;
+  --bs-btn-disabled-color: #70228f;
+  --bs-btn-disabled-bg: #faf4ff;
+  --bs-btn-disabled-border-color: #dec3ec;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.btn.app-btn-secondary:focus-visible {
+  outline: 3px solid #8123a5;
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.btn.app-btn-secondary[aria-pressed="true"] {
+  color: #fff;
+  background-color: #8123a5;
+  border-color: #8123a5;
+}

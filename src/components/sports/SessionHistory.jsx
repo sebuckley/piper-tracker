@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAppStore } from "../../store/useAppStore";
+import FeedbackEntryDetails from "./FeedbackEntryDetails";
 
 export default function SessionHistory() {
   const { sportId } = useParams();
@@ -8,8 +9,6 @@ export default function SessionHistory() {
   const sports = useAppStore(s => s.sportsClasses);
   const feedbackSessions = useAppStore(s => s.sportsFeedback);
   const isViewer = useAppStore(s => s.isViewer());
-
-  console.log(feedbackSessions);
 
   const removeSession = useAppStore(s => s.removeFeedbackSession);
 
@@ -161,8 +160,8 @@ return (
                     <strong>Entries:</strong>
                     <ul className="small mt-2">
                       {(session.entries || []).map(e => (
-                        <li key={e.id}>
-                          <strong>{e.name}</strong> — {e.rating}
+                        <li key={e.id} className="mb-2">
+                          <FeedbackEntryDetails entry={e} />
                         </li>
                       ))}
                     </ul>

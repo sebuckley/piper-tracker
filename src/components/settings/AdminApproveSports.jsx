@@ -1,71 +1,43 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { API_BASE } from "../../config/api";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../../store/useAppStore"; 
 import { Link } from "react-router-dom";
+import { useAdminApprovals } from "./useAdminApprovals";
+import AdminApprovalStatus from "./AdminApprovalStatus";
 
 export default function AdminApproveSports() {
 
-  const [pending, setPending] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { environment, apiBase, adminLink, data, setData, error, busy, runAction, retry } = useAdminApprovals(["/api/pending/sports"]);
+  const pending = data?.[0] ?? [];
   const [feedback, setFeedback] = useState("");
   const navigate = useNavigate();
   const loadDefaultSports = useAppStore(state => state.loadDefaultSports);
 
 
-  // ⭐ Load pending sports from Worker
-  useEffect(() => {
-    async function loadPending() {
-      const res = await fetch(`${API_BASE}/api/pending/sports`);
-      const data = await res.json();
-      console.log(data);
-      setPending(data);
-      setLoading(false);
-    }
-    loadPending();
-  }, []);
-
-  // ⭐ Approve sport → add to GLOBAL_TEMPLATES
-  const approveSport = async (submission) => {
-    const res = await fetch(`${API_BASE}/api/approve/sport`, {
+  const approveSport = submission => runAction(async request => {
+    await request("/api/approve/sport", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sport: submission.sport })
     });
 
-    if (res.ok) {
+    await request(`/api/pending/sports/${encodeURIComponent(submission.id)}`, { method: "DELETE" });
+    setData(([list]) => [list.filter(p => p.id !== submission.id)]);
+    setFeedback(`Approved "${submission.sport.name}"`);
+    if (apiBase === API_BASE) await loadDefaultSports();
+    setTimeout(() => navigate(adminLink), 1200);
+  });
 
-      console.log(`Approved sport: ${submission.sport.name}`);
-      setFeedback(`Approved "${submission.sport.name}"`);
-      // Remove from UI
-      setPending(pending.filter(p => p.id !== submission.id));
-
-      // Delete from pending list
-      await fetch(`${API_BASE}/api/pending/sports/${submission.id}`, {
-        method: "DELETE"
-      });
-
-      await loadDefaultSports();
-
-      setTimeout(() => navigate("/settings/admin"), 1200);
-    }
-  };
-
-  // ⭐ Reject sport → delete from GLOBAL_SUBMISSIONS
-  const rejectSport = async (submission) => {
-    await fetch(`${API_BASE}/api/pending/sports/${submission.id}`, {
+  const rejectSport = submission => runAction(async request => {
+    await request(`/api/pending/sports/${encodeURIComponent(submission.id)}`, {
       method: "DELETE"
     });
 
     setFeedback(`Rejected "${submission.sport.name}"`);
-    setPending(pending.filter(p => p.id !== submission.id));
-
-    setTimeout(() => navigate("/settings/admin"), 1200);
-  };
-
-  if (loading) {
-    return <div className="container mt-4">Loading pending sports…</div>;
-  }
+    setData(([list]) => [list.filter(p => p.id !== submission.id)]);
+    setTimeout(() => navigate(adminLink), 1200);
+  });
 
   return (
     <div className="container mt-4">
@@ -73,13 +45,14 @@ export default function AdminApproveSports() {
       {/* ⭐ Breadcrumb */}
       <div className="mb-3">
         <nav style={{ fontWeight: 600, fontSize: "18px", textAlign: "left" }}>
-          <Link to="/settings/admin" style={{ color: "#b300ff", textDecoration: "none" }}>
+          <Link to={adminLink} style={{ color: "#b300ff", textDecoration: "none" }}>
             Admin Panel
           </Link>
           <span style={{ color: "#1f2a44", margin: "0 6px" }}>›</span>
           <span style={{ color: "#1f2a44" }}>Approve Sports</span>
         </nav>
       </div>
+      <AdminApprovalStatus environment={environment} adminLink={adminLink} error={error} loading={!data} retry={retry} />
       
       <h2 className="h3 mb-4" style={{ color: "#b300ff", fontWeight: 700 }}>
         Pending Sport Approvals
@@ -87,7 +60,7 @@ export default function AdminApproveSports() {
 
 
 
-      {pending.length === 0 && (
+      {data && pending.length === 0 && (
         <div className="p-3" style={{
           borderRadius: "16px",
           border: "1px solid #e6e6e6",
@@ -120,6 +93,7 @@ export default function AdminApproveSports() {
           <div className="d-flex gap-2 mt-3">
             <button
               className="btn"
+              disabled={busy}
               style={{
                 backgroundColor: "#b300ff",
                 color: "white",
@@ -133,6 +107,7 @@ export default function AdminApproveSports() {
 
             <button
               className="btn btn-light"
+              disabled={busy}
               style={{
                 borderRadius: "12px",
                 border: "1px solid #dcdcdc",

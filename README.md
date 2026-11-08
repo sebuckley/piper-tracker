@@ -1,5 +1,11 @@
 # React + Vite
 
+## Button styles
+
+Use `btn app-btn-secondary` for secondary actions and add `btn-sm` for compact
+controls. Toggle buttons can use `aria-pressed` to show the selected state.
+The shared style is defined in `src/styles/buttons.css`.
+
 ## Device access
 
 Owners can rename devices and mark them as child devices in Settings → Device
@@ -14,6 +20,25 @@ owners to remove them.
 These are client-side interface restrictions, not a security boundary: enforce
 permissions in Firestore rules and on the Worker before relying on them to
 protect data.
+
+## Admin approval environment
+
+The admin panel is available in the development build. Its approval environment
+selector defaults to Development (`http://127.0.0.1:8787`) and can be switched
+to the production Worker. The chosen environment is shown on approval pages and
+applies to pending lists, approvals, rejections and the template lookup for skill
+names. Returning to the panel keeps the selection; opening the panel without an
+environment in the URL defaults back to Development.
+The existing `/api/templates` lookup used for skill names can also seed or
+backfill missing templates in the selected environment.
+
+Development requires a local Worker running on the browser's device, for
+example with `npm run worker:dev`; its local KV is separate from production.
+The placeholder `env.dev` KV IDs in `wrangler.toml` do not configure a deployed
+development environment. Developer tools and template editing are not switched
+by the approval selector and continue to use the app's normal API.
+Production approvals modify live data. The Worker currently does not authenticate
+these endpoints, so the development-only admin UI is not a security boundary.
 
 ## Legacy tracker-state migration
 

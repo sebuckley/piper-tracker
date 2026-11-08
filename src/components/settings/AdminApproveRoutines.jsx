@@ -1,24 +1,17 @@
-import { useEffect, useState } from "react";
-import { API_BASE } from "../../config/api";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
+import { useAdminApprovals } from "./useAdminApprovals";
+import AdminApprovalStatus from "./AdminApprovalStatus";
 
 export default function AdminApproveRoutines() {
-  const [pending, setPending] = useState([]);
+  const { environment, adminLink, data, setData, error, busy, runAction, retry } = useAdminApprovals(["/api/pending/routines"]);
+  const pending = data?.[0] ?? [];
   const [feedback, setFeedback] = useState("");
   const navigate = useNavigate();
 
-  useEffect(() => {
-    async function load() {
-      const res = await fetch(`${API_BASE}/api/pending/routines`);
-      const data = await res.json();
-      setPending(data);
-    }
-    load();
-  }, []);
-
-  const approve = async (item) => {
-    await fetch(`${API_BASE}/api/approve/routine`, {
+  const approve = item => runAction(async request => {
+    await request("/api/approve/routine", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -29,45 +22,46 @@ export default function AdminApproveRoutines() {
       })
     });
 
-    await fetch(`${API_BASE}/api/pending/routines/${item.id}`, {
+    await request(`/api/pending/routines/${encodeURIComponent(item.id)}`, {
       method: "DELETE"
     });
 
     setFeedback(`Approved routine "${item.routine.name}"`);
-    setPending(pending.filter(p => p.id !== item.id));
+    setData(([list]) => [list.filter(p => p.id !== item.id)]);
 
-    setTimeout(() => navigate("/settings/admin"), 1200);
-  };
+    setTimeout(() => navigate(adminLink), 1200);
+  });
 
-  const reject = async (item) => {
-    await fetch(`${API_BASE}/api/pending/routines/${item.id}`, {
+  const reject = item => runAction(async request => {
+    await request(`/api/pending/routines/${encodeURIComponent(item.id)}`, {
       method: "DELETE"
     });
 
     setFeedback(`Rejected routine "${item.routine.name}"`);
-    setPending(pending.filter(p => p.id !== item.id));
+    setData(([list]) => [list.filter(p => p.id !== item.id)]);
 
-    setTimeout(() => navigate("/settings/admin"), 1200);
-  };
+    setTimeout(() => navigate(adminLink), 1200);
+  });
 
   return (
     <div className="container mt-4">
       {/* ⭐ Breadcrumb */}
       <div className="mb-3">
         <nav style={{ fontWeight: 600, fontSize: "18px", textAlign: "left" }}>
-          <Link to="/settings/admin" style={{ color: "#b300ff", textDecoration: "none" }}>
+          <Link to={adminLink} style={{ color: "#b300ff", textDecoration: "none" }}>
             Admin Panel
           </Link>
           <span style={{ color: "#1f2a44", margin: "0 6px" }}>›</span>
           <span style={{ color: "#1f2a44" }}>Approve Routines</span>
         </nav>
       </div>
+      <AdminApprovalStatus environment={environment} adminLink={adminLink} error={error} loading={!data} retry={retry} />
 
       <h2 className="h3 mb-4" style={{ color: "#b300ff", fontWeight: 700 }}>
         Pending Routine Approvals
       </h2>
 
-      {pending.length === 0 && (
+      {data && pending.length === 0 && (
         <div className="p-3" style={{
           borderRadius: "16px",
           border: "1px solid #e6e6e6",
@@ -85,7 +79,6 @@ export default function AdminApproveRoutines() {
           backgroundColor: "#ffffff"
         }}>
 
-          {console.log(item)}
           <strong style={{ color: "#b300ff", fontSize: "18px" }}>
             {item.routine.name}
           </strong>
@@ -109,6 +102,7 @@ export default function AdminApproveRoutines() {
           <div className="d-flex gap-2 mt-3">
             <button
               className="btn"
+              disabled={busy}
               style={{
                 backgroundColor: "#b300ff",
                 color: "white",
@@ -122,6 +116,7 @@ export default function AdminApproveRoutines() {
 
             <button
               className="btn btn-light"
+              disabled={busy}
               style={{
                 borderRadius: "12px",
                 border: "1px solid #dcdcdc",

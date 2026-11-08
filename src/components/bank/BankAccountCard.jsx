@@ -1,29 +1,35 @@
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { parseStatementCsv } from "../../utils/bankCsv";
 import { useAppStore } from "../../store/useAppStore";
 import { Link } from "react-router-dom";
 import TransferForm from "./TransferForm";
+import "./BankAccountCard.css";
 
 export default function BankAccountCard({ accountId }) {
   const getAccount = useAppStore(state => state.getAccount);
   const getBalance = useAppStore(state => state.getBalance);
   const getTransactions = useAppStore(state => state.getTransactions);
 
-  
-
   const addCredit = useAppStore(state => state.addCredit);
   const addWithdrawal = useAppStore(state => state.addWithdrawal);
   const importTransactions = useAppStore(state => state.importTransactions);
   const accounts = useAppStore(state => state.bankAccounts ?? {});
   const isViewer = useAppStore(state => state.isViewer());
+  const [showCredit, setShowCredit] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [showAdditionalActions, setShowAdditionalActions] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const fileRef = useRef(null);
+  const additionalActionsId = useId();
 
   const account = getAccount(accountId);
 
-  console.log(account);
-
   if (!account) {
     return (
-      <div className="p-3 mb-4" style={{ background: "white", borderRadius: "14px", border: "1px solid #e6e6e6" }}>
+      <div className="bank-card mb-4">
         <div className="text-muted small">Account not found</div>
       </div>
     );
@@ -39,12 +45,6 @@ export default function BankAccountCard({ accountId }) {
     currency === "USD" ? "$" :
     currency === "JPY" ? "¥" :
     currency;
-
-  const [showCredit, setShowCredit] = useState(false);
-  const [showWithdraw, setShowWithdraw] = useState(false);
-  const [showTransfer, setShowTransfer] = useState(false);
-  const [importMsg, setImportMsg] = useState("");
-  const fileRef = useRef(null);
 
   const handleImport = async e => {
     const file = e.target.files?.[0];
@@ -63,9 +63,6 @@ export default function BankAccountCard({ accountId }) {
       (errors.length ? `, ${errors.length} invalid row(s) skipped.` : ".")
     );
   };
-
-  const [amount, setAmount] = useState("");
-  const [reason, setReason] = useState("");
 
   const resetForm = () => {
     setAmount("");
@@ -87,35 +84,30 @@ export default function BankAccountCard({ accountId }) {
   };
 
   return (
-    <div
-      className="p-3 mb-4"
-      style={{
-        background: "white",
-        borderRadius: "14px",
-        border: "1px solid #e6e6e6"
-      }}
-    >
-      <h3 className="h4 mb-2" style={{ color: "#1f2a44", fontWeight: 600 }}>
-        {account.name} <span className="text-muted small">({account.type})</span>
-      </h3>
+    <div className="bank-card mb-4">
 
-      {/* Balance */}
-      <div className="mb-3">
-        <div className="small text-muted">Current Balance</div>
-        <div
-          style={{
-            fontSize: "28px",
-            fontWeight: 700,
-            color: balance >= 0 ? "#1f2a44" : "#b30000"
-          }}
-        >
-          {symbol}{balance.toFixed(2)}
+      <div className="bank-card-layout">
+        <div className="bank-account-details">
+          <h3 className="h4 mb-3" style={{ color: "#1f2a44", fontWeight: 600 }}>
+            {account.name} <span className="text-muted small">({account.type})</span>
+          </h3>
+
+          <div className="bank-section">
+            <div className="small text-muted">Current Balance</div>
+            <div
+              style={{
+                fontSize: "28px",
+                fontWeight: 700,
+                color: balance >= 0 ? "#1f2a44" : "#b30000"
+              }}
+            >
+              {symbol}{balance.toFixed(2)}
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Recent Activity (limit 5) */}
-      <div className="mb-3">
-        <div className="small text-muted mb-1">Recent Activity</div>
+      <div className="bank-section bank-activity">
+        <div className="small text-muted mb-2">Recent Activity</div>
 
         {transactions.length === 0 && (
           <div className="text-muted small">No transactions yet</div>
@@ -134,98 +126,118 @@ export default function BankAccountCard({ accountId }) {
             </span>
           </div>
         ))}
-
-    
       </div>
 
-      {/* Action Buttons */}
-      <div className="d-flex gap-2 mb-2">
-        {!isViewer && <><button
-          className="btn btn-sm"
-          style={{
-            backgroundColor: "#b300ff",
-            color: "white",
-            borderRadius: "10px"
-          }}
-          onClick={() => {
-            resetForm();
-            setShowWithdraw(false);
-            setShowCredit(true);
-          }}
-        >
-          + Add Credit
-        </button>
+      <div className="bank-actions">
 
-        <button
-          className="btn btn-sm btn-light"
-          style={{
-            borderRadius: "10px",
-            border: "1px solid #dcdcdc"
-          }}
-          onClick={() => {
-            resetForm();
-            setShowCredit(false);
-            setShowWithdraw(true);
-          }}
-        >
-          Withdraw
-        </button>
-
-        <button
-          className="btn btn-sm btn-light"
-          style={{ borderRadius: "10px", border: "1px solid #dcdcdc" }}
-          onClick={() => fileRef.current?.click()}
-        >
-          Import CSV
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".csv,text/csv"
-          style={{ display: "none" }}
-          onChange={handleImport}
-        />
-
-        {Object.keys(accounts).length > 1 && (
-          <button
-            className="btn btn-sm btn-light"
-            style={{ borderRadius: "10px", border: "1px solid #dcdcdc" }}
-            onClick={() => {
-              resetForm();
-              setShowCredit(false);
-              setShowWithdraw(false);
-              setShowTransfer(true);
-            }}
-          >
-            Transfer
-          </button>
-        )}</>}
-            {/* Full History Button */}
-        {transactions.length > 0 && (
-         
-            <Link
-              to={`/bank/history/${accountId}`}
-              className="btn btn-light btn-sm"
+        {!isViewer && (
+          <>
+            <button
+              type="button"
+              className="btn btn-sm"
               style={{
-                borderRadius: "10px",
-                border: "1px solid #dcdcdc"
+                backgroundColor: "#b300ff",
+                color: "white"
+              }}
+              onClick={() => {
+                resetForm();
+                setShowWithdraw(false);
+                setShowTransfer(false);
+                setShowCredit(true);
               }}
             >
-              View Full History
-            </Link>
-       
+              + Add Credit
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-sm btn-light"
+              style={{ border: "1px solid #dcdcdc" }}
+              onClick={() => {
+                resetForm();
+                setShowCredit(false);
+                setShowTransfer(false);
+                setShowWithdraw(true);
+              }}
+            >
+              Withdraw
+            </button>
+
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,text/csv"
+              style={{ display: "none" }}
+              onChange={handleImport}
+            />
+
+          </>
         )}
+
+        {(!isViewer || transactions.length > 0) && (
+          <>
+            <button
+              type="button"
+              className="btn btn-sm btn-light bank-more-actions"
+              aria-expanded={showAdditionalActions}
+              aria-controls={additionalActionsId}
+              onClick={() => setShowAdditionalActions(open => !open)}
+            >
+              Additional actions {showAdditionalActions ? "−" : "+"}
+            </button>
+            <div
+              id={additionalActionsId}
+              className={`bank-secondary-actions${showAdditionalActions ? " is-open" : ""}`}
+            >
+              {!isViewer && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-light"
+                  style={{ border: "1px solid #dcdcdc" }}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  Import CSV
+                </button>
+              )}
+              {!isViewer && Object.keys(accounts).length > 1 && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-light"
+                  style={{ border: "1px solid #dcdcdc" }}
+                  onClick={() => {
+                    resetForm();
+                    setShowCredit(false);
+                    setShowWithdraw(false);
+                    setShowTransfer(true);
+                  }}
+                >
+                  Transfer
+                </button>
+              )}
+              {transactions.length > 0 && (
+                <Link
+                  to={`/bank/history/${accountId}`}
+                  className="btn btn-light btn-sm"
+                  style={{ border: "1px solid #dcdcdc" }}
+                >
+                  View Full History
+                </Link>
+              )}
+            </div>
+          </>
+        )}
+      </div>
       </div>
 
       {importMsg && (
-        <div className="small mb-2" style={{ color: "#1f2a44" }}>{importMsg}</div>
+        <div className="small mt-2" style={{ color: "#1f2a44" }}>{importMsg}</div>
       )}
 
       {!isViewer && showTransfer && (
         <TransferForm fromId={accountId} close={() => setShowTransfer(false)} />
       )}
 
-      {/* Hidden Credit Form */}
+      {/* Credit Form */}
       {!isViewer && showCredit && (
         <div className="mt-3">
           <div className="small mb-1">Add Credit</div>
@@ -275,7 +287,7 @@ export default function BankAccountCard({ accountId }) {
         </div>
       )}
 
-      {/* Hidden Withdrawal Form */}
+      {/* Withdrawal Form */}
       {!isViewer && showWithdraw && (
         <div className="mt-3">
           <div className="small mb-1">Withdraw Money</div>

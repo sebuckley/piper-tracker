@@ -2,14 +2,18 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAppStore } from "../../store/useAppStore";
 import { nanoid } from "nanoid";
+import { getRoutineSkillFeedback } from "./feedbackDetails";
+import FeedbackEntryDetails from "./FeedbackEntryDetails";
+import "./SessionFeedback.css";
 
 export default function SessionFeedback() {
   const { sportId } = useParams();
-  const classes = useAppStore(s => s.sportsClasses);
   const sport = useAppStore(s => s.sportsClasses.find(sp => sp.templateId === sportId));
   const addFeedbackSession = useAppStore(s => s.addFeedbackSession);
 
   const [entries, setEntries] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [formError, setFormError] = useState("");
   const [mode, setMode] = useState("simple");
   const [notes, setNotes] = useState("");
   const [simpleStars, setSimpleStars] = useState(0);
@@ -21,9 +25,11 @@ export default function SessionFeedback() {
   });
 
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedType, setSelectedType] = useState(""); // skill | routine
+  const [selectedType, setSelectedType] = useState("");
   const [selectedItem, setSelectedItem] = useState("");
   const [rating, setRating] = useState("");
+  const [routineSkills, setRoutineSkills] = useState([]);
+  const [showSkillNote, setShowSkillNote] = useState(false);
   const [feedback, setFeedback] = useState({
     whatHappened: "",
     positive: "",
@@ -36,42 +42,107 @@ export default function SessionFeedback() {
     return <div className="container mt-4">Sport not found.</div>;
   }
 
-  const category = sport.categories.find(c => c.id === selectedCategory);
+  const category = (sport.categories || []).find(c => c.id === selectedCategory);
+  const items = selectedType === "skill" ? category?.skills || [] : category?.routines || [];
+  const selectedItemRecord = items.find(item => item.id === selectedItem);
+  const hasSkillFeedback = routineSkills.some(skill => skill.rating || skill.notes.trim() || skill.positive.trim() || skill.improve.trim());
+  const hasDraft = Boolean(selectedItem || rating || hasSkillFeedback || Object.values(feedback).some(value => value.trim()));
 
-  const handleAddEntry = () => {
-    if (!selectedCategory || !selectedType || !selectedItem || !rating) return;
-
-    const item =
-      selectedType === "skill"
-        ? category.skills.find(s => s.id === selectedItem)
-        : category.routines.find(r => r.id === selectedItem);
-
-    const items = selectedType === "skill" ? category.skills : category.routines;
-
-    // Get all unique levels
-    const levels = [...new Set(items.map(i => i.level).filter(Boolean))];
-
-
-    const newEntry = {
-      id: nanoid(),
-      type: selectedType,
-      categoryId: selectedCategory,
-      itemId: selectedItem,
-      name: item.name,
-      rating,
-      feedback
-    };
-
-    setEntries(prev => [...prev, newEntry]);
-
-    // Reset fields
+  const resetEntryForm = () => {
     setSelectedType("");
     setSelectedItem("");
     setRating("");
+    setRoutineSkills([]);
+    setShowSkillNote(false);
     setFeedback({ whatHappened: "", positive: "", improve: "" });
+    setEditingId(null);
+    setFormError("");
+  };
+
+  const handleAddEntry = () => {
+    if (!selectedCategory || !selectedType || !selectedItemRecord || !rating) {
+      setFormError("Select a category, skill or routine, and rating before adding the feedback item.");
+      return;
+    }
+
+    const newEntry = {
+      id: editingId || nanoid(),
+      type: selectedType,
+      categoryId: selectedCategory,
+      itemId: selectedItem,
+      name: selectedItemRecord.name,
+      rating,
+      ...(selectedType === "skill"
+        ? { feedback: { ...feedback, whatHappened: feedback.whatHappened || selectedItemRecord.name } }
+        : editingId && entries.find(entry => entry.id === editingId)?.type === "routine"
+          ? { feedback: entries.find(entry => entry.id === editingId).feedback }
+          : {}),
+      ...(selectedType === "routine" ? {
+        skillFeedback: routineSkills.map(({ ref, name, rating: skillRating, notes: skillNotes, positive, improve }) => ({
+          ref, name, rating: skillRating, notes: skillNotes, positive, improve
+        }))
+      } : {})
+    };
+
+    setEntries(prev => editingId
+      ? prev.map(entry => entry.id === editingId ? newEntry : entry)
+      : [...prev, newEntry]);
+
+    resetEntryForm();
+  };
+
+  const handleEditEntry = entry => {
+    if ((editingId || hasDraft) && !window.confirm("Discard the feedback item currently being edited?")) return;
+    setSelectedCategory(entry.categoryId);
+    setSelectedType(entry.type);
+    setSelectedItem(entry.itemId);
+    setRating(entry.rating);
+    const entryCategory = (sport.categories || []).find(c => c.id === entry.categoryId);
+    const routine = entryCategory?.routines?.find(r => r.id === entry.itemId);
+    setRoutineSkills(entry.type === "routine" && routine
+      ? getRoutineSkillFeedback(routine, entryCategory, entry.skillFeedback || [])
+      : []);
+    setShowSkillNote(false);
+    setFeedback({
+      whatHappened: entry.feedback?.whatHappened || "",
+      positive: entry.feedback?.positive || "",
+      improve: entry.feedback?.improve || ""
+    });
+    setEditingId(entry.id);
+    setFormError("");
+  };
+
+  const changeSelection = (kind, value) => {
+    if ((kind === "category" && value === selectedCategory) ||
+        (kind === "type" && value === selectedType) ||
+        (kind === "item" && value === selectedItem)) return;
+    if ((rating || hasSkillFeedback || Object.values(feedback).some(value => value.trim())) &&
+        !window.confirm("Changing the selection will discard the rating and notes currently being edited. Continue?")) return;
+    setRoutineSkills([]);
+    setShowSkillNote(false);
+    setRating("");
+    setFeedback({ whatHappened: "", positive: "", improve: "" });
+    if (kind === "category") {
+      setSelectedCategory(value);
+      setSelectedType("");
+      setSelectedItem("");
+    } else if (kind === "type") {
+      setSelectedType(value);
+      setSelectedItem("");
+    } else {
+      setSelectedItem(value);
+      const routine = selectedType === "routine" ? items.find(item => item.id === value) : null;
+      if (routine) setRoutineSkills(getRoutineSkillFeedback(routine, category));
+    }
   };
 
   const handleSubmit = () => {
+    if (editingId || hasDraft) {
+      setFormError(editingId
+        ? "Update or cancel the item being edited before saving the session."
+        : "Add or cancel the current feedback item before saving the session.");
+      return;
+    }
 
     const base = {
       id: nanoid(),
@@ -151,7 +222,7 @@ export default function SessionFeedback() {
   return (
     <>
       <div className="mb-3">
-        <button className="btn btn-secondary" onClick={addDummy}>
+        <button className="btn app-btn-secondary" onClick={addDummy}>
           Add Dummy Feedback
         </button>
       </div>
@@ -215,8 +286,8 @@ export default function SessionFeedback() {
               <label className="form-label fw-bold">Stars</label>
               <div className="d-flex align-items-center gap-2">
                 <button
-                  className="btn btn-light"
-                  style={{ borderRadius: "10px", border: "1px solid #dcdcdc", fontWeight: 700 }}
+                  className="btn app-btn-secondary"
+                  aria-label="Remove one star"
                   onClick={() => setSimpleStars(s => Math.max(0, s - 1))}
                 >
                   −
@@ -227,8 +298,8 @@ export default function SessionFeedback() {
                     : <span style={{ color: "#f5b800" }}>{"⭐".repeat(Math.min(simpleStars, 5))}{simpleStars > 5 ? ` ${simpleStars}` : ""}</span>}
                 </div>
                 <button
-                  className="btn btn-light"
-                  style={{ borderRadius: "10px", border: "1px solid #dcdcdc", fontWeight: 700 }}
+                  className="btn app-btn-secondary"
+                  aria-label="Add one star"
                   onClick={() => setSimpleStars(s => s + 1)}
                 >
                   +
@@ -249,7 +320,7 @@ export default function SessionFeedback() {
             {sport.categories.map(c => (
               <button
                 key={c.id}
-                onClick={() => setSelectedCategory(c.id)}
+                onClick={() => changeSelection("category", c.id)}
                 className="btn"
                 style={{
                   borderRadius: "12px",
@@ -285,7 +356,7 @@ export default function SessionFeedback() {
                 ].map(t => (
                   <button
                     key={t.id}
-                    onClick={() => setSelectedType(t.id)}
+                    onClick={() => changeSelection("type", t.id)}
                     className="btn"
                     style={{
                       borderRadius: "12px",
@@ -310,18 +381,13 @@ export default function SessionFeedback() {
           )}
 
           {/* ⭐ SKILLS / ROUTINES GROUPED BY LEVEL */}
-{selectedType && (
+{selectedType && category && (
   <div className="mb-4">
     <h3 className="h4 mb-2" style={{ color: "#1f2a44", fontWeight: 600 }}>
       {selectedType === "skill" ? "Skills" : "Routines"}
     </h3>
 
     {(() => {
-      const items =
-        selectedType === "skill"
-          ? category.skills
-          : category.routines;
-
       // Extract levels dynamically
       const levels = [...new Set(items.map(i => i.level).filter(Boolean))];
 
@@ -332,7 +398,7 @@ export default function SessionFeedback() {
             {items.map(item => (
               <button
                 key={item.id}
-                onClick={() => setSelectedItem(item.id)}
+                onClick={() => changeSelection("item", item.id)}
                 className="btn"
                 style={{
                   borderRadius: "12px",
@@ -354,20 +420,20 @@ export default function SessionFeedback() {
       }
 
       // Grouped by detected levels
-      return levels.map(level => {
-        const group = items.filter(i => i.level === level);
+      return [...levels, ...(items.some(item => !item.level) ? [null] : [])].map(level => {
+        const group = items.filter(i => level === null ? !i.level : i.level === level);
 
         return (
           <div key={level} className="mb-3">
             <div className="small fw-bold mb-2" style={{ color: "#1f2a44" }}>
-              {level}
+              {level || "Other"}
             </div>
 
             <div className="d-flex flex-wrap gap-2">
               {group.map(item => (
                 <button
                   key={item.id}
-                  onClick={() => setSelectedItem(item.id)}
+                  onClick={() => changeSelection("item", item.id)}
                   className="btn"
                   style={{
                     borderRadius: "12px",
@@ -393,8 +459,131 @@ export default function SessionFeedback() {
 )}
 
 
+          {selectedItemRecord && selectedType === "skill" && (
+            <div className="mb-4" style={{ background: "white", borderRadius: "16px", border: "1px solid #e6e6e6", padding: "16px" }}>
+              <button type="button" className="btn btn-sm app-btn-secondary" aria-expanded={showSkillNote} onClick={() => setShowSkillNote(open => !open)}>
+                {showSkillNote ? "Hide note" : feedback.positive || feedback.improve ? "Edit note" : "Add note"}
+              </button>
+              {showSkillNote && <div className="feedback-note mt-3">
+              <div className="small mb-2"><strong>What Happened:</strong> {feedback.whatHappened || selectedItemRecord.name}</div>
+              {[
+                { field: "positive", label: "Positive" },
+                { field: "improve", label: "Improve" }
+              ].map(({ field, label }) => (
+                <div className="mb-3" key={field}>
+                  <label htmlFor={`feedback-${field}`} className="form-label fw-bold">{label}</label>
+                  <textarea
+                    id={`feedback-${field}`}
+                    className="form-control mb-2"
+                    rows="2"
+                    value={feedback[field]}
+                    onChange={e => setFeedback(current => ({ ...current, [field]: e.target.value }))}
+                    style={{ borderRadius: "12px" }}
+                  />
+                  <div className="d-flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-sm app-btn-secondary"
+                      aria-label={`Set ${label} to N/A`}
+                      onClick={() => setFeedback(current => ({ ...current, [field]: "N/A" }))}
+                    >
+                      N/A
+                    </button>
+                  </div>
+                </div>
+              ))}
+              </div>}
+            </div>
+          )}
+
+          {selectedItemRecord && selectedType === "routine" && (
+            <section className="feedback-skills mb-4 p-3">
+              <h3 className="h4 mb-2" style={{ color: "#1f2a44", fontWeight: 600 }}>Routine Skills</h3>
+              <p className="small text-muted mb-3">Rate or add notes for any skills you want. They will be saved with the routine; you do not need to add them separately.</p>
+              {routineSkills.length === 0 && <div className="small text-muted">No skills are listed in this routine.</div>}
+              {routineSkills.map((skill, index) => (
+                <fieldset key={`${skill.ref}-${index}`} className="feedback-skill mb-3 p-3">
+                  <legend className="fs-6 fw-bold">{skill.name}</legend>
+                  {skill.missing && <div className="small text-warning mb-2">This skill could not be found in the current category.</div>}
+                  <div className="d-flex flex-wrap gap-2 mb-2">
+                    {[
+                      { value: "needs work", label: "Needs Work" },
+                      { value: "mixed", label: "Mixed" },
+                      { value: "good", label: "Good" },
+                      { value: "excellent", label: "Excellent" },
+                      { value: "not attempted", label: "Not attempted" }
+                    ].map(option => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className="btn btn-sm app-btn-secondary"
+                        aria-pressed={skill.rating === option.value}
+                        onClick={() => setRoutineSkills(current => current.map((item, i) =>
+                          i === index ? { ...item, rating: item.rating === option.value ? "" : option.value } : item
+                        ))}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm app-btn-secondary"
+                    aria-expanded={skill.showNote}
+                    onClick={() => setRoutineSkills(current => current.map((item, i) =>
+                      i === index ? { ...item, showNote: !item.showNote } : item
+                    ))}
+                  >
+                    {skill.showNote ? "Hide note" : skill.notes || skill.positive || skill.improve ? "Edit note" : "Add note"}
+                  </button>
+                  {skill.showNote && (
+                    <div className="feedback-note mt-3">
+                      <div className="small mb-2"><strong>What Happened:</strong> {skill.name}</div>
+                      {skill.hasLegacyNotes && (
+                        <div className="mb-2">
+                          <label htmlFor={`routine-skill-legacy-${index}`} className="form-label small fw-bold">Previous notes for {skill.name}</label>
+                          <textarea
+                            id={`routine-skill-legacy-${index}`}
+                            className="form-control"
+                            rows="2"
+                            value={skill.notes}
+                            onChange={event => {
+                              const notes = event.target.value;
+                              setRoutineSkills(current => current.map((item, i) => i === index ? { ...item, notes } : item));
+                            }}
+                          />
+                        </div>
+                      )}
+                      {[{ field: "positive", label: "Positive" }, { field: "improve", label: "Improve" }].map(({ field, label }) => (
+                        <div className="mb-2" key={field}>
+                          <label htmlFor={`routine-skill-${field}-${index}`} className="form-label small fw-bold">{label} for {skill.name}</label>
+                          <textarea
+                            id={`routine-skill-${field}-${index}`}
+                            className="form-control mb-2"
+                            rows="2"
+                            value={skill[field]}
+                            onChange={event => {
+                              const value = event.target.value;
+                              setRoutineSkills(current => current.map((item, i) => i === index ? { ...item, [field]: value } : item));
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-sm app-btn-secondary"
+                            aria-label={`Set ${label} for ${skill.name} to N/A`}
+                            onClick={() => setRoutineSkills(current => current.map((item, i) => i === index ? { ...item, [field]: "N/A" } : item))}
+                          >N/A</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </fieldset>
+              ))}
+            </section>
+          )}
+
           {/* ⭐ RATING */}
-          {selectedItem && (
+          {selectedItemRecord && (
             <div className="mb-4">
               <h3 className="h4 mb-2" style={{ color: "#1f2a44", fontWeight: 600 }}>
                 Rating
@@ -433,60 +622,12 @@ export default function SessionFeedback() {
             </div>
           )}
 
-          {/* ⭐ FEEDBACK TEXT */}
-          {rating && (
-            <div
-              className="mb-4"
-              style={{
-                background: "white",
-                borderRadius: "16px",
-                border: "1px solid #e6e6e6",
-                padding: "16px"
-              }}
-            >
-              <h3 className="h4 mb-3" style={{ color: "#1f2a44", fontWeight: 600 }}>
-                Details
-              </h3>
-
-              <label className="form-label fw-bold">What Happened?</label>
-              <textarea
-                className="form-control mb-3"
-                rows="2"
-                value={feedback.whatHappened}
-                onChange={e =>
-                  setFeedback({ ...feedback, whatHappened: e.target.value })
-                }
-                style={{ borderRadius: "12px" }}
-              />
-
-              <label className="form-label fw-bold">Positive</label>
-              <textarea
-                className="form-control mb-3"
-                rows="2"
-                value={feedback.positive}
-                onChange={e =>
-                  setFeedback({ ...feedback, positive: e.target.value })
-                }
-                style={{ borderRadius: "12px" }}
-              />
-
-              <label className="form-label fw-bold">Improve</label>
-              <textarea
-                className="form-control"
-                rows="2"
-                value={feedback.improve}
-                onChange={e =>
-                  setFeedback({ ...feedback, improve: e.target.value })
-                }
-                style={{ borderRadius: "12px" }}
-              />
-            </div>
-          )}
-
           {/* ⭐ ADD ENTRY */}
-          {rating && (
+          {(selectedItemRecord || editingId || hasDraft) && (
+            <div className="d-flex gap-2 mb-4">
             <button
-              className="btn mb-4"
+              type="button"
+              className="btn"
               onClick={handleAddEntry}
               style={{
                 backgroundColor: "#b300ff",
@@ -496,8 +637,12 @@ export default function SessionFeedback() {
                 padding: "10px 20px"
               }}
             >
-              + Add Feedback Item
+              {editingId ? "Update Feedback Item" : "+ Add Feedback Item"}
             </button>
+            <button type="button" className="btn app-btn-secondary" onClick={resetEntryForm}>
+              {editingId ? "Cancel Edit" : "Cancel Item"}
+            </button>
+            </div>
           )}
 
           {/* ⭐ ADDED ENTRIES */}
@@ -517,12 +662,10 @@ export default function SessionFeedback() {
                     border: "1px solid #e6e6e6"
                   }}
                 >
-                  <strong>{e.name}</strong> — {e.rating}
-                  <div className="small mt-2">
-                    <div><strong>What Happened:</strong> {e.feedback.whatHappened}</div>
-                    <div><strong>Positive:</strong> {e.feedback.positive}</div>
-                    <div><strong>Improve:</strong> {e.feedback.improve}</div>
-                  </div>
+                  <FeedbackEntryDetails entry={e} />
+                  <button type="button" className="btn btn-sm app-btn-secondary mt-2" onClick={() => handleEditEntry(e)}>
+                    Edit {e.name}
+                  </button>
                 </div>
               ))}
             </div>
@@ -642,6 +785,7 @@ export default function SessionFeedback() {
 
 
           {/* ⭐ SAVE */}
+          {formError && <div className="alert alert-danger" role="alert">{formError}</div>}
           <button
             className="btn"
             onClick={handleSubmit}

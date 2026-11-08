@@ -1,40 +1,19 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { API_BASE } from "../../config/api";
+import { Link, useNavigate } from "react-router-dom";
+import { useAdminApprovals } from "./useAdminApprovals";
+
+const pendingPaths = [
+  "/api/pending/sports", "/api/pending/skills", "/api/pending/routines",
+  "/api/pending/clubs", "/api/pending/club-updates", "/api/pending/categories",
+  "/api/pending/rewards"
+];
 
 export default function AdminPanel() {
-  const [counts, setCounts] = useState({
-    sports: 0,
-    skills: 0,
-    routines: 0,
-    clubs: 0
-  });
-
-  useEffect(() => {
-    async function loadCounts() {
-      const [sports, skills, routines, clubs, clubUpdates, categories, rewards] = await Promise.all([
-        fetch(`${API_BASE}/api/pending/sports`).then(r => r.json()),
-        fetch(`${API_BASE}/api/pending/skills`).then(r => r.json()),
-        fetch(`${API_BASE}/api/pending/routines`).then(r => r.json()),
-        fetch(`${API_BASE}/api/pending/clubs`).then(r => r.json()),
-        fetch(`${API_BASE}/api/pending/club-updates`).then(r => r.json()),
-        fetch(`${API_BASE}/api/pending/categories`).then(r => r.json()),
-        fetch(`${API_BASE}/api/pending/rewards`).then(r => r.json()).catch(() => [])
-      ]);
-
-      setCounts({
-        sports: sports.length,
-        skills: skills.length,
-        routines: routines.length,
-        categories: categories.length,
-        rewards: rewards.length,
-        clubs: clubs.length + clubUpdates.length,
-        clubUpdates: clubUpdates.length
-      });
-    }
-
-    loadCounts();
-  }, []);
+  const navigate = useNavigate();
+  const { environment, apiBase, query, data, error, retry } = useAdminApprovals(pendingPaths);
+  const counts = data ? {
+    sports: data[0].length, skills: data[1].length, routines: data[2].length,
+    clubs: data[3].length + data[4].length, categories: data[5].length, rewards: data[6].length
+  } : { sports: "—", skills: "—", routines: "—", clubs: "—", categories: "—", rewards: "—" };
 
   return (
     <div className="container mt-4">
@@ -64,6 +43,27 @@ export default function AdminPanel() {
       >
         Admin Panel
       </h2>
+
+      <div className={`alert ${environment === "production" ? "alert-warning" : "alert-info"} text-start`}>
+        <label htmlFor="admin-environment" className="form-label fw-bold">Approval environment</label>
+        <select
+          id="admin-environment"
+          className="form-select"
+          value={environment}
+          onChange={event => navigate(`?environment=${event.target.value}`)}
+        >
+          {!environment && <option value="" disabled>Select an environment</option>}
+          <option value="development">Development</option>
+          <option value="production">Production</option>
+        </select>
+        <div className="small mt-2">
+          Approval lists, approvals and rejections use {apiBase}.
+          {environment === "production" ? " Changes affect live production data." : " The local development Worker must be running on this device."}
+          {" "}Developer tools and template editing still use the app's normal API.
+        </div>
+      </div>
+      {error && <div className="alert alert-danger" role="alert">{error} <button type="button" className="btn btn-sm btn-outline-danger" onClick={retry}>Retry</button></div>}
+      {!data && !error && <div role="status" className="mb-3">Loading approval counts…</div>}
 
       {/* ⭐ Stats Overview */}
       <div className="row mb-4">
@@ -184,7 +184,7 @@ export default function AdminPanel() {
 
         <div className="d-flex flex-wrap gap-2 mt-2">
           <Link
-            to="/settings/admin/approve-sports"
+            to={`/settings/admin/approve-sports${query}`}
             className="btn btn-sm"
             style={{
               backgroundColor: "#b300ff",
@@ -199,7 +199,7 @@ export default function AdminPanel() {
           </Link>
 
           <Link
-            to="/settings/admin/approveskills"
+            to={`/settings/admin/approveskills${query}`}
             className="btn btn-sm"
             style={{
               backgroundColor: "#b300ff",
@@ -214,7 +214,7 @@ export default function AdminPanel() {
           </Link>
 
           <Link
-            to="/settings/admin/approveroutines"
+            to={`/settings/admin/approveroutines${query}`}
             className="btn btn-sm"
             style={{
               backgroundColor: "#b300ff",
@@ -229,7 +229,7 @@ export default function AdminPanel() {
           </Link>
 
           <Link
-            to="/settings/admin/approvecategories"
+            to={`/settings/admin/approvecategories${query}`}
             className="btn btn-sm"
             style={{
               backgroundColor: "#b300ff",
@@ -244,7 +244,7 @@ export default function AdminPanel() {
           </Link>
 
           <Link
-            to="/settings/admin/approverewards"
+            to={`/settings/admin/approverewards${query}`}
             className="btn btn-sm"
             style={{
               backgroundColor: "#b300ff",
@@ -259,7 +259,7 @@ export default function AdminPanel() {
           </Link>
 
           <Link
-            to="/settings/admin/approveclubs"
+            to={`/settings/admin/approveclubs${query}`}
             className="btn btn-sm"
             style={{
               backgroundColor: "#b300ff",

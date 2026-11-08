@@ -1,0 +1,62 @@
+.bank-card {
+  padding: 1rem;
+  background: white;
+  border: 1px solid #e6e6e6;
+  border-radius: 14px;
+  text-align: left;
+}
+
+.bank-card-layout {
+  display: grid;
+  grid-template-areas: "details" "activity" "actions";
+  gap: 1rem;
+}
+
+.bank-account-details {
+  grid-area: details;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bank-activity {
+  grid-area: activity;
+  min-width: 0;
+}
+
+.bank-actions,
+.bank-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bank-actions {
+  grid-area: actions;
+}
+
+.bank-more-actions {
+  display: none !important;
+}
+
+@media (max-width: 767.98px) {
+  .bank-card-layout {
+    grid-template-areas: "details actions" "activity activity";
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 42%);
+    align-items: start;
+  }
+
+  .bank-actions,
+  .bank-secondary-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .bank-more-actions {
+    display: block !important;
+    border: 1px solid #dcdcdc !important;
+  }
+
+  .bank-secondary-actions:not(.is-open) {
+    display: none;
+  }
+}

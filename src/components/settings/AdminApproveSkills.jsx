@@ -1,25 +1,14 @@
-import { useEffect, useState } from "react";
-import { API_BASE } from "../../config/api";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAppStore } from "../../store/useAppStore";
+import { useAdminApprovals } from "./useAdminApprovals";
+import AdminApprovalStatus from "./AdminApprovalStatus";
 
 export default function AdminApproveSkills() {
-  const [pending, setPending] = useState([]);
+  const { environment, adminLink, data, setData, error, busy, runAction, retry } = useAdminApprovals(["/api/pending/skills", "/api/templates"]);
+  const pending = data?.[0] ?? [];
+  const defaultSports = data?.[1] ?? [];
   const [feedback, setFeedback] = useState("");
   const navigate = useNavigate();
-  const defaultSports = useAppStore(state => state.defaultSports);
-   const sportsClasses = useAppStore(state => state.sportsClasses);
-
-
-  useEffect(() => {
-    async function load() {
-      const res = await fetch(`${API_BASE}/api/pending/skills`);
-      const data = await res.json();
-      setPending(data);
-    }
-    load();
-  }, []);
-
 const getSportName = (item) => {
 
   if (!defaultSports) return "Unknown Sport";
@@ -36,14 +25,14 @@ const getCategoryName = (item) => {
 
   if (!sport) return "Unknown Category";
 
-  const category = sport.categories.find(c => c.id === item.categoryId);
+  const category = (sport.categories || []).find(c => c.id === item.categoryId);
 
   return category ? category.name : "Unknown Category";
 };
 
 
-  const approve = async (item) => {
-    await fetch(`${API_BASE}/api/approve/skill`, {
+  const approve = item => runAction(async request => {
+    await request("/api/approve/skill", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -53,26 +42,26 @@ const getCategoryName = (item) => {
       })
     });
 
-    await fetch(`${API_BASE}/api/pending/skills/${item.id}`, {
+    await request(`/api/pending/skills/${encodeURIComponent(item.id)}`, {
       method: "DELETE"
     });
 
     setFeedback(`Approved "${item.skill.name}"`);
-    setPending(pending.filter(p => p.id !== item.id));
+    setData(([list, templates]) => [list.filter(p => p.id !== item.id), templates]);
 
-    setTimeout(() => navigate("/settings/admin"), 1200);
-  };
+    setTimeout(() => navigate(adminLink), 1200);
+  });
 
-  const reject = async (item) => {
-    await fetch(`${API_BASE}/api/pending/skills/${item.id}`, {
+  const reject = item => runAction(async request => {
+    await request(`/api/pending/skills/${encodeURIComponent(item.id)}`, {
       method: "DELETE"
     });
 
     setFeedback(`Rejected "${item.skill.name}"`);
-    setPending(pending.filter(p => p.id !== item.id));
+    setData(([list, templates]) => [list.filter(p => p.id !== item.id), templates]);
 
-    setTimeout(() => navigate("/settings/admin"), 1200);
-  };
+    setTimeout(() => navigate(adminLink), 1200);
+  });
 
   return (
     <div className="container mt-4">
@@ -80,20 +69,21 @@ const getCategoryName = (item) => {
       {/* ⭐ Breadcrumb */}
       <div className="mb-3">
         <nav style={{ fontWeight: 600, fontSize: "18px", textAlign: "left" }}>
-          <Link to="/settings/admin" style={{ color: "#b300ff", textDecoration: "none" }}>
+          <Link to={adminLink} style={{ color: "#b300ff", textDecoration: "none" }}>
             Admin Panel
           </Link>
           <span style={{ color: "#1f2a44", margin: "0 6px" }}>›</span>
           <span style={{ color: "#1f2a44" }}>Approve Skills</span>
         </nav>
       </div>
+      <AdminApprovalStatus environment={environment} adminLink={adminLink} error={error} loading={!data} retry={retry} />
       
       <h2 className="h3 mb-4" style={{ color: "#b300ff", fontWeight: 700 }}>
         Pending Skill Approvals
       </h2>
 
 
-      {pending.length === 0 && (
+      {data && pending.length === 0 && (
         <div className="p-3" style={{
           borderRadius: "16px",
           border: "1px solid #e6e6e6",
@@ -110,7 +100,6 @@ const getCategoryName = (item) => {
           border: "1px solid #e6e6e6",
           backgroundColor: "#ffffff"
         }}>
-          {console.log(item)}
           <strong style={{ color: "#b300ff", fontSize: "18px" }}>
             {item.skill.name}
           </strong>
@@ -125,6 +114,7 @@ const getCategoryName = (item) => {
           <div className="d-flex gap-2 mt-3">
             <button
               className="btn"
+              disabled={busy}
               style={{
                 backgroundColor: "#b300ff",
                 color: "white",
@@ -138,6 +128,7 @@ const getCategoryName = (item) => {
 
             <button
               className="btn btn-light"
+              disabled={busy}
               style={{
                 borderRadius: "12px",
                 border: "1px solid #dcdcdc",

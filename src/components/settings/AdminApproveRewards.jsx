@@ -1,39 +1,33 @@
-import { useEffect, useState } from "react";
-import { API_BASE } from "../../config/api";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { resolveEmoji } from "../../utils/rewardEmojis";
+import { useAdminApprovals } from "./useAdminApprovals";
+import AdminApprovalStatus from "./AdminApprovalStatus";
 
 export default function AdminApproveRewards() {
-  const [pending, setPending] = useState([]);
+  const { environment, adminLink, data, setData, error, busy, runAction, retry } = useAdminApprovals(["/api/pending/rewards"]);
+  const pending = data?.[0] ?? [];
   const [feedback, setFeedback] = useState("");
 
-  useEffect(() => {
-    async function load() {
-      const res = await fetch(`${API_BASE}/api/pending/rewards`);
-      setPending(await res.json());
-    }
-    load();
-  }, []);
-
-  const remove = async item => {
-    await fetch(`${API_BASE}/api/pending/rewards/${item.id}`, { method: "DELETE" });
-    setPending(prev => prev.filter(p => p.id !== item.id));
+  const remove = async (item, request) => {
+    await request(`/api/pending/rewards/${encodeURIComponent(item.id)}`, { method: "DELETE" });
+    setData(([list]) => [list.filter(p => p.id !== item.id)]);
   };
 
-  const approve = async item => {
-    await fetch(`${API_BASE}/api/approve/reward`, {
+  const approve = item => runAction(async request => {
+    await request("/api/approve/reward", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reward: item.reward })
     });
-    await remove(item);
+    await remove(item, request);
     setFeedback(`Approved reward "${item.reward.name}"`);
-  };
+  });
 
-  const reject = async item => {
-    await remove(item);
+  const reject = item => runAction(async request => {
+    await remove(item, request);
     setFeedback(`Rejected reward "${item.reward.name}"`);
-  };
+  });
 
   const card = {
     borderRadius: "16px",
@@ -45,19 +39,20 @@ export default function AdminApproveRewards() {
     <div className="container mt-4">
       <div className="mb-3">
         <nav style={{ fontWeight: 600, fontSize: "18px", textAlign: "left" }}>
-          <Link to="/settings/admin" style={{ color: "#b300ff", textDecoration: "none" }}>
+          <Link to={adminLink} style={{ color: "#b300ff", textDecoration: "none" }}>
             Admin Panel
           </Link>
           <span style={{ color: "#1f2a44", margin: "0 6px" }}>›</span>
           <span style={{ color: "#1f2a44" }}>Approve Rewards</span>
         </nav>
       </div>
+      <AdminApprovalStatus environment={environment} adminLink={adminLink} error={error} loading={!data} retry={retry} />
 
       <h2 className="h3 mb-4" style={{ color: "#b300ff", fontWeight: 700 }}>
         Pending Reward Approvals
       </h2>
 
-      {pending.length === 0 && (
+      {data && pending.length === 0 && (
         <div className="p-3" style={{ ...card, fontWeight: 600 }}>No pending rewards.</div>
       )}
 
@@ -77,6 +72,7 @@ export default function AdminApproveRewards() {
           <div className="d-flex gap-2 mt-3">
             <button
               className="btn"
+              disabled={busy}
               style={{ backgroundColor: "#b300ff", color: "white", fontWeight: 600, borderRadius: "12px" }}
               onClick={() => approve(item)}
             >
@@ -84,6 +80,7 @@ export default function AdminApproveRewards() {
             </button>
             <button
               className="btn btn-light"
+              disabled={busy}
               style={{ borderRadius: "12px", border: "1px solid #dcdcdc", fontWeight: 600 }}
               onClick={() => reject(item)}
             >
